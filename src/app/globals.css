@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ------------------------- Persian font ------------------------- */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #fff9ef;
+  --foreground: #292524;
+  --border: #e7e5e4;
+  --ring: #f59e0b;
+  --primary: #f59e0b;
+  --primary-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
+  background: #fdf3e0;
+  color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* --------------------------- puzzle tubes --------------------------- */
+.tube {
+  --tw: clamp(38px, 10.5vw, 52px);
+  width: var(--tw);
+  height: calc(var(--tw) * 3.8);
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1));
+  border: 3px solid rgba(255, 255, 255, 0.75);
+  border-radius: 9px 9px 20px 20px;
+  box-shadow:
+    inset 0 -6px 12px rgba(120, 80, 30, 0.14),
+    0 8px 16px rgba(120, 80, 30, 0.22);
+  transform-origin: 50% 12%;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.tube-units {
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: 6px 6px 17px 17px;
+  overflow: hidden;
+}
+.unit {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  height: calc(25% + 0px);
+  transform-origin: bottom;
+}
+.unit-ghost {
+  animation: unitRise 0.13s ease-out both;
+  z-index: 2;
+}
+@keyframes unitRise {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.tube-gloss {
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px 6px 17px 17px;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 26%, transparent 40%);
+  pointer-events: none;
+}
+.tube-rim {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 10px;
+  border-radius: 9px 9px 4px 4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.25));
+  pointer-events: none;
+}
+.tube-selected {
+  transform: translateY(-14px) scale(1.04);
+  box-shadow:
+    inset 0 -6px 12px rgba(120, 80, 30, 0.14),
+    0 8px 16px rgba(120, 80, 30, 0.22),
+    0 0 0 3px rgba(245, 158, 11, 0.75);
+}
+.tube-hinted {
+  animation: hintPulse 0.75s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 -6px 12px rgba(120, 80, 30, 0.14),
+      0 0 0 3px rgba(52, 211, 153, 0.85),
+      0 8px 16px rgba(120, 80, 30, 0.22);
+  }
+  50% {
+    box-shadow:
+      inset 0 -6px 12px rgba(120, 80, 30, 0.14),
+      0 0 0 7px rgba(52, 211, 153, 0.4),
+      0 8px 16px rgba(120, 80, 30, 0.22);
+  }
+}
+.tube-shake {
+  animation: tubeShake 0.38s ease-in-out;
+}
+@keyframes tubeShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+.tube-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 14px 14px 24px 24px;
+  border: 2px solid rgba(253, 224, 71, 0.9);
+  box-shadow: 0 0 14px rgba(253, 224, 71, 0.65);
+  animation: glowSoft 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes glowSoft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.sparkle {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #ffd54f;
+  box-shadow: 0 0 6px rgba(255, 213, 79, 0.9);
+  animation: sparkleFly 0.85s ease-out forwards;
+}
+@keyframes sparkleFly {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--sx), var(--sy)) rotate(240deg) scale(0.2);
+  }
+}
+
+/* ---------------------------- animations ---------------------------- */
+.modal-pop {
+  animation: modalPop 0.24s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.toast-pop {
+  animation: toastPop 0.22s ease-out both;
+}
+@keyframes toastPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.star-pop {
+  display: inline-flex;
+  animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes starPop {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-40deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+.coin-pop {
+  display: inline-block;
+  animation: coinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+}
+@keyframes coinPop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.item-pop {
+  animation: itemPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: bottom center;
+}
+.item-pop.anchor-top {
+  animation-name: itemPopTop;
+  transform-origin: top center;
+}
+@keyframes itemPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+@keyframes itemPopTop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+.confetti-piece {
+  position: fixed;
+  top: -18px;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+  z-index: 70;
+}
+@keyframes confettiFall {
+  from {
+    transform: translateY(0) rotate(0deg);
+  }
+  to {
+    transform: translateY(108vh) rotate(560deg);
+  }
+}
+
+/* ---------------------------- scrollbars ---------------------------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(217, 191, 152, 0.25);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9bf98;
+  border-radius: 8px;
+}
+
+/* line-clamp helper (Tailwind v4 includes it, kept for safety) */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* rebuild marker 1795271084 */
+
+/* rebuild 1795271845870160839 */

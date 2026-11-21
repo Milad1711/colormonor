@@ -1,0 +1,133 @@
+"use client";
+
+import { useGame } from "@/game/store";
+import { ROOMS, ROOM_BY_ID } from "@/game/decor";
+import { sfx } from "@/game/audio";
+import { BackButton, CoinBadge, GameButton, LockIcon, StarBadge, StarIcon, useT } from "./UiBits";
+import { MansionFacade } from "./MansionFacade";
+import { Modal } from "./Modal";
+import { useState } from "react";
+import { toast } from "./toast";
+import { cn } from "@/lib/utils";
+
+export function MansionScreen() {
+  const { t, n } = useT();
+  const coins = useGame((s) => s.coins);
+  const starBalance = useGame((s) => s.starBalance);
+  const unlockedRooms = useGame((s) => s.unlockedRooms);
+  const decor = useGame((s) => s.decor);
+  const openRoom = useGame((s) => s.openRoom);
+  const unlockRoom = useGame((s) => s.unlockRoom);
+  const goMenu = useGame((s) => s.goMenu);
+  const [lockInfo, setLockInfo] = useState<string | null>(null);
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] to-[#F6D9A8] px-4 pb-8 pt-4">
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BackButton onClick={goMenu} label={t("back")} />
+          <h1 className="text-lg font-black text-stone-800">{t("manor_title")}</h1>
+        </div>
+        <div className="flex gap-2">
+          <StarBadge value={starBalance} />
+          <CoinBadge value={coins} />
+        </div>
+      </header>
+      <p className="mt-1 text-center text-xs font-bold text-stone-500">{t("manor_subtitle")}</p>
+
+      <MansionFacade unlockedCount={unlockedRooms.length} className="mx-auto mt-3 w-full max-w-md drop-shadow" />
+
+      <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-3">
+        {ROOMS.map((room) => {
+          const locked = !unlockedRooms.includes(room.id);
+          const filled = room.slots.filter((s) => decor[s.id]).length;
+          const complete = filled === room.slots.length;
+          return (
+            <div
+              key={room.id}
+              className={cn(
+                "flex items-center justify-between gap-3 rounded-3xl border-2 bg-white/85 p-3.5 shadow-sm",
+                locked ? "border-stone-200 opacity-90" : complete ? "border-amber-300 bg-amber-50/90" : "border-emerald-200",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {locked && <LockIcon className="size-4 shrink-0" />}
+                  <h2 className="truncate text-base font-black text-stone-800">{t(room.nameKey)}</h2>
+                  {complete && (
+                    <span className="shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-amber-950">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-2 w-28 overflow-hidden rounded-full bg-stone-200">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
+                      style={{ width: `${(filled / room.slots.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-stone-500 tabular-nums">
+                    {t("room_progress")}: {n(filled)}/{n(room.slots.length)}
+                  </span>
+                </div>
+              </div>
+              {locked ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.tap();
+                    if (starBalance < room.unlockStars) {
+                      sfx.error();
+                      toast(t("not_enough_stars"), "error");
+                      setLockInfo(room.id);
+                      return;
+                    }
+                    const ok = unlockRoom(room.id);
+                    if (ok) {
+                      sfx.unlock();
+                      toast(t("room_unlocked_toast"), "success");
+                    }
+                  }}
+                  className="flex min-h-11 shrink-0 items-center gap-1 rounded-2xl border border-amber-300 bg-amber-100 px-3 text-sm font-black text-amber-800 active:scale-95"
+                >
+                  <StarIcon className="size-4" filled />
+                  {n(room.unlockStars)}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.tap();
+                    openRoom(room.id);
+                  }}
+                  className="min-h-11 shrink-0 rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 px-4 text-sm font-black text-white shadow-[0_3px_0_#0f766e] active:translate-y-[2px] active:shadow-none"
+                >
+                  {t("enter_manor")}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* lock explanation */}
+      <Modal open={lockInfo !== null} onClose={() => setLockInfo(null)} ariaLabel={t("room_locked_title")}>
+        <div className="text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-stone-200">
+            <LockIcon className="size-8" />
+          </div>
+          <h2 className="mt-3 text-lg font-black text-stone-800">{t("room_locked_title")}</h2>
+          {lockInfo && (
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              {t(ROOM_BY_ID.get(lockInfo)!.nameKey)} — {n(ROOM_BY_ID.get(lockInfo)!.unlockStars)} {t("stars")}
+            </p>
+          )}
+          <GameButton className="mt-4 w-full" onClick={() => setLockInfo(null)}>
+            {t("close")}
+          </GameButton>
+        </div>
+      </Modal>
+    </div>
+  );
+}
