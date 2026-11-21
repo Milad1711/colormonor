@@ -481,6 +481,111 @@ button {
   border-radius: 8px;
 }
 
+/* ======================= lucky wheel ======================= */
+.wheel-stage::before {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  bottom: -14px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(96, 62, 22, 0.26), rgba(96, 62, 22, 0) 100%);
+  filter: blur(2px);
+}
+.wheel-disc {
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.wheel-bulb {
+  animation: bulbBlink 1.5s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes bulbBlink {
+  0% { opacity: 0.45; }
+  100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 236, 170, 0.95)); }
+}
+.wheel-free-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background: #fff;
+  color: #be123c;
+  padding: 0.05rem 0.5rem;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  animation: chipPulse 1.4s ease-in-out infinite alternate;
+}
+@keyframes chipPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+.wheel-used-badge {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #b45309;
+  border: 1.5px solid #fcd34d;
+  box-shadow: 0 2px 6px rgba(120, 70, 20, 0.25);
+}
+
+/* ======================= coin packs ======================= */
+.pack-glow {
+  animation: packGlow 2.2s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes packGlow {
+  from { opacity: 0.2; transform: scale(0.9); }
+  to { opacity: 0.5; transform: scale(1.12); }
+}
+.pack-golden {
+  background-image: linear-gradient(105deg, rgba(255, 255, 255, 0) 40%, rgba(255, 224, 130, 0.55) 50%, rgba(255, 255, 255, 0) 60%);
+  background-size: 260% 100%;
+  animation: goldSheen 2.8s linear infinite;
+}
+@keyframes goldSheen {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+
+/* ======================= shop 3D touches ======================= */
+.shop-card-3d {
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.22s ease;
+  transform-style: preserve-3d;
+}
+.shop-card-3d:hover {
+  transform: perspective(620px) rotateX(5deg) translateY(-3px);
+  box-shadow: 0 12px 26px rgba(120, 80, 30, 0.24);
+}
+.shop-card-3d:active {
+  transform: perspective(620px) rotateX(0deg) scale(0.95);
+}
+.pedestal-3d {
+  perspective: 700px;
+}
+.pedestal-3d > * {
+  transform-origin: 50% 82%;
+  animation: pedestalTurn 7s ease-in-out infinite alternate;
+}
+@keyframes pedestalTurn {
+  from { transform: rotateY(-13deg); }
+  to { transform: rotateY(13deg); }
+}
+.min-h-13 {
+  min-height: 3.25rem;
+}
+
 /* line-clamp helper (Tailwind v4 includes it, kept for safety) */
 .line-clamp-1 {
   display: -webkit-box;

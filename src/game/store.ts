@@ -41,6 +41,8 @@ interface SaveShape {
   roomBonusGiven: string[];
   decor: Record<string, { variant: number }>;
   currentLevel: number;
+  /** local YYYY-MM-DD of the last free daily spin (null = never spun) */
+  lastWheelDate: string | null;
 }
 
 interface UIState {
@@ -51,6 +53,8 @@ interface UIState {
   shopContext: { roomId: string; slotId?: string } | null;
   /** room id whose renovation was just completed (for the celebration modal) */
   roomJustCompleted: string | null;
+  /** global coin-bank modal (lucky wheel + coin packs) */
+  coinStoreOpen: boolean;
 }
 
 export interface GameStore extends SaveShape, UIState {
@@ -78,6 +82,15 @@ export interface GameStore extends SaveShape, UIState {
   buyDecor: (slotId: string, itemId: string, variant: number) => boolean;
   switchDecor: (slotId: string, itemId: string, variant: number) => boolean;
   clearRoomJustCompleted: () => void;
+
+  // coin bank (wheel + packs)
+  openCoinStore: () => void;
+  closeCoinStore: () => void;
+  addCoins: (amount: number) => void;
+  /** true when the free daily spin has not been used for today's local date */
+  canSpinToday: () => boolean;
+  /** records the free spin for today; returns false if already used */
+  registerSpin: () => boolean;
 }
 
 const initialSave: SaveShape = {
@@ -91,6 +104,7 @@ const initialSave: SaveShape = {
   roomBonusGiven: [],
   decor: {},
   currentLevel: 1,
+  lastWheelDate: null,
 };
 
 const initialUI: UIState = {
@@ -99,6 +113,7 @@ const initialUI: UIState = {
   activeRoom: null,
   shopContext: null,
   roomJustCompleted: null,
+  coinStoreOpen: false,
 };
 
 export const useGame = create<GameStore>()(
@@ -110,6 +125,8 @@ export const useGame = create<GameStore>()(
       goMenu: () => set({ screen: "menu", activeRoom: null, shopContext: null }),
       goLevels: () => set({ screen: "levels" }),
       goManor: () => set({ screen: "manor", activeRoom: null, shopContext: null }),
+      openCoinStore: () => set({ coinStoreOpen: true }),
+      closeCoinStore: () => set({ coinStoreOpen: false }),
       openRoom: (roomId) => set({ screen: "room", activeRoom: roomId, shopContext: null }),
       goShop: (ctx) =>
         set({ screen: "shop", shopContext: ctx ?? null }),
@@ -213,6 +230,18 @@ export const useGame = create<GameStore>()(
       },
 
       clearRoomJustCompleted: () => set({ roomJustCompleted: null }),
+
+      addCoins: (amount) =>
+        set({ coins: Math.max(0, get().coins + amount) }),
+
+      canSpinToday: () => get().lastWheelDate !== todayKey(),
+
+      registerSpin: () => {
+        const s = get();
+        if (s.lastWheelDate === todayKey()) return false;
+        set({ lastWheelDate: todayKey() });
+        return true;
+      },
     }),
     {
       name: "color-manor-save-v1",
@@ -228,9 +257,17 @@ export const useGame = create<GameStore>()(
         roomBonusGiven: s.roomBonusGiven,
         decor: s.decor,
         currentLevel: s.currentLevel,
+        lastWheelDate: s.lastWheelDate,
       }),
     },
   ),
 );
 
 export const ALL_ROOM_IDS = ROOMS.map((r) => r.id);
+
+/** Local calendar date (device timezone) as YYYY-MM-DD — the daily-spin key. */
+function todayKey(): string {
+  const d = new Date();
+  const p = (v: number) => String(v).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}

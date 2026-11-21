@@ -16,6 +16,8 @@ import { sfx } from "@/game/audio";
 import { BackButton, CoinBadge, LockIcon, useT } from "./UiBits";
 import { DecorPreview } from "./DecorArt";
 import { Modal } from "./Modal";
+import { WheelEntryButton, PacksEntryButton } from "./LuckyWheel";
+import { ShopScene3D } from "./ShopScene3D";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
 import { Backdrop } from "./Backdrop";
@@ -37,6 +39,7 @@ export function ShopScreen() {
   const openRoom = useGame((s) => s.openRoom);
   const goManor = useGame((s) => s.goManor);
   const goMenu = useGame((s) => s.goMenu);
+  const openCoinStore = useGame((s) => s.openCoinStore);
 
   const [cat, setCat] = useState<ItemCategory | "all">(shopContext?.slotId ? (SHOP_ITEMS[ROOMS.flatMap((r) => r.slots).find((sl) => sl.id === shopContext.slotId)!.item].category) : "all");
   const [detail, setDetail] = useState<string | null>(null); // item id
@@ -118,9 +121,23 @@ export function ShopScreen() {
             )}
           </div>
         </div>
-        <CoinBadge value={coins} />
+        <CoinBadge value={coins} onClick={openCoinStore} />
       </header>
       <p className="mt-1 text-center text-[11px] font-bold text-stone-500">{t("price_change_note")}</p>
+
+      {/* 3D market kiosk hero */}
+      <div className="relative mx-auto mt-2 h-32 max-h-40 min-h-24 w-full max-w-md overflow-hidden rounded-[22px] border-4 border-white/80 shadow-[0_10px_26px_rgba(120,70,20,0.22)]">
+        <ShopScene3D className="absolute inset-0" />
+        <span className="pointer-events-none absolute start-2 top-2 rounded-full border border-white/70 bg-white/80 px-2 py-0.5 text-[10px] font-black text-stone-500 shadow-sm">
+          3D
+        </span>
+      </div>
+
+      {/* coin bank entries */}
+      <div className="mx-auto mt-3 flex w-full max-w-md gap-3">
+        <WheelEntryButton onOpen={openCoinStore} />
+        <PacksEntryButton onOpen={openCoinStore} />
+      </div>
 
       {/* category tabs */}
       <div className="mx-auto mt-3 flex w-full max-w-md gap-1.5 overflow-x-auto pb-1">
@@ -146,7 +163,7 @@ export function ShopScreen() {
                 openDetail(it.id);
               }}
               className={cn(
-                "relative flex flex-col items-center rounded-3xl border-2 bg-white/90 p-2.5 text-center shadow-[0_6px_16px_rgba(120,80,30,0.14)] backdrop-blur transition-transform active:scale-95",
+                "shop-card-3d relative flex flex-col items-center rounded-3xl border-2 bg-white/90 p-2.5 text-center shadow-[0_6px_16px_rgba(120,80,30,0.14)] backdrop-blur",
                 owned ? "border-emerald-300" : "border-amber-200",
                 contextItem === it.id && "ring-2 ring-orange-400",
               )}
@@ -189,7 +206,7 @@ export function ShopScreen() {
               <p className="mt-0.5 text-center text-[11px] font-bold text-stone-500">
                 {t(ROOM_BY_ID.get(roomId)!.nameKey)} · {t(VARIANT_NAME_KEYS[selVariant])}
               </p>
-              <div className="mx-auto mt-2 h-36 w-40 rounded-2xl bg-gradient-to-b from-amber-50 to-amber-100 p-1 shadow-inner">
+              <div className="pedestal-3d mx-auto mt-2 h-36 w-40 rounded-2xl bg-gradient-to-b from-amber-50 to-amber-100 p-1 shadow-inner">
                 <DecorPreview item={detail} variant={selVariant} className="h-full w-full" />
               </div>
               <p className="mt-1.5 text-center text-[11px] font-bold text-stone-500">{t("preview_hint")}</p>

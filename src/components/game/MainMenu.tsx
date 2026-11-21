@@ -1,7 +1,7 @@
 "use client";
 
 import { useGame } from "@/game/store";
-import { MansionFacade } from "./MansionFacade";
+import { Mansion3D } from "./Mansion3D";
 import { Backdrop } from "./Backdrop";
 import {
   CoinBadge,
@@ -9,6 +9,7 @@ import {
   StarBadge,
   useT,
 } from "./UiBits";
+import { WheelEntryButton, PacksEntryButton } from "./LuckyWheel";
 import { sfx } from "@/game/audio";
 import { fmtNum } from "@/game/i18n";
 
@@ -22,17 +23,18 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const goLevels = useGame((s) => s.goLevels);
   const goManor = useGame((s) => s.goManor);
   const goShop = useGame((s) => s.goShop);
+  const openCoinStore = useGame((s) => s.openCoinStore);
   const setLanguage = useGame((s) => s.setLanguage);
 
   return (
-    <div className="scene-root flex min-h-dvh flex-col items-center px-4 pb-8 pt-5">
+    <div className="scene-root flex min-h-dvh flex-col items-center px-4 pb-8 pt-4">
       <Backdrop />
 
       {/* top badges */}
       <div className="flex w-full max-w-md items-center justify-between">
         <div className="flex items-center gap-2">
           <StarBadge value={starBalance} />
-          <CoinBadge value={coins} />
+          <CoinBadge value={coins} onClick={openCoinStore} />
         </div>
         <button
           type="button"
@@ -50,16 +52,19 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
         </button>
       </div>
 
-      {/* 3D floating manor hero */}
-      <div className="relative mt-1 w-full max-w-md">
+      {/* live WebGL 3D manor hero — drag to spin it around */}
+      <div className="relative mt-1 h-[30vh] max-h-72 min-h-52 w-full max-w-md">
         <div
-          className="ground-shadow absolute bottom-1 left-1/2 h-7 w-4/5 -translate-x-1/2 rounded-[100%]"
+          className="ground-shadow absolute bottom-0 left-1/2 h-6 w-3/4 -translate-x-1/2 rounded-[100%]"
           aria-hidden
         />
-        <MansionFacade unlockedCount={unlockedRooms.length} className="mf-float relative w-full" />
+        <Mansion3D unlockedCount={unlockedRooms.length} className="mf-float absolute inset-0" />
+        <span className="pointer-events-none absolute start-1 top-1 rounded-full border border-white/70 bg-white/75 px-2.5 py-0.5 text-[10px] font-black text-stone-500 shadow-sm backdrop-blur">
+          3D
+        </span>
       </div>
 
-      <h1 className="title3d mt-2 text-center text-4xl font-black tracking-wide">
+      <h1 className="title3d mt-1 text-center text-4xl font-black tracking-wide">
         {t("app_name")}
       </h1>
       <p className="mt-2 rounded-full border border-white/70 bg-white/70 px-4 py-1 text-center text-sm font-bold text-stone-600 shadow-sm backdrop-blur">
@@ -67,7 +72,7 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
       </p>
 
       {/* actions */}
-      <div className="mt-6 flex w-full max-w-xs flex-col gap-3">
+      <div className="mt-5 flex w-full max-w-xs flex-col gap-3">
         <GameButton className="w-full text-lg" onClick={() => playLevel(currentLevel)}>
           {currentLevel > 1 ? `${t("continue_level")} ${n(currentLevel)}` : t("play")}
         </GameButton>
@@ -82,10 +87,14 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
         <GameButton variant="gold" className="w-full" onClick={() => goShop()}>
           {t("shop")}
         </GameButton>
+        <div className="flex gap-3">
+          <WheelEntryButton onOpen={openCoinStore} />
+          <PacksEntryButton onOpen={openCoinStore} />
+        </div>
       </div>
 
       {/* quick language switch */}
-      <div className="mt-6 flex items-center gap-1 rounded-full border border-white/70 bg-white/80 p-1 shadow-sm backdrop-blur">
+      <div className="mt-5 flex items-center gap-1 rounded-full border border-white/70 bg-white/80 p-1 shadow-sm backdrop-blur">
         {(["fa", "en"] as const).map((l) => (
           <button
             key={l}

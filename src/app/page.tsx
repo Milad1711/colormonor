@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useGame } from "@/game/store";
 import { setSoundEnabled } from "@/game/audio";
 import { AudioPrimer, InlineToast } from "@/components/game/UiBits";
@@ -10,6 +10,7 @@ import { PuzzleScreen } from "@/components/game/PuzzleScreen";
 import { MansionScreen } from "@/components/game/MansionScreen";
 import { RoomScreen } from "@/components/game/RoomScreen";
 import { ShopScreen } from "@/components/game/ShopScreen";
+import { CoinStoreModal } from "@/components/game/CoinStoreModal";
 import { SettingsModal } from "@/components/game/SettingsModal";
 import { MansionFacade } from "@/components/game/MansionFacade";
 import { Backdrop } from "@/components/game/Backdrop";
@@ -62,8 +63,15 @@ function LanguagePicker() {
   );
 }
 
+const emptySubscribe = () => () => {};
+
 export default function Page() {
-  const [mounted, setMounted] = useState(false);
+  // hydration flag via useSyncExternalStore (no setState-in-effect)
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
   const language = useGame((s) => s.language);
   const sound = useGame((s) => s.sound);
   const screen = useGame((s) => s.screen);
@@ -73,7 +81,6 @@ export default function Page() {
   const activeLevel = useGame((s) => s.activeLevel);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => setMounted(true), []);
   useEffect(() => setSoundEnabled(sound), [sound]);
   useEffect(() => {
     const lang = language ?? "fa";
@@ -93,6 +100,7 @@ export default function Page() {
       {screen === "manor" && <MansionScreen />}
       {screen === "room" && <RoomScreen />}
       {screen === "shop" && <ShopScreen />}
+      <CoinStoreModal />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <InlineToast />
     </>

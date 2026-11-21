@@ -129,4 +129,30 @@ export const sfx = {
   undo() {
     tone(500, 0.1, "sine", 0.4, 0, 320);
   },
+  /** short click used while the lucky wheel sweeps over pins */
+  tick() {
+    noise(0.03, 0.22, 0, 2400);
+    tone(1900, 0.03, "square", 0.12);
+  },
+  /** rising spin-start whoosh */
+  spinStart() {
+    tone(220, 0.5, "sine", 0.3, 0, 880);
+    noise(0.4, 0.2, 0, 1600);
+  },
+  /** bright chest-opening / pack-claim flourish */
+  chest() {
+    tone(392, 0.09, "triangle", 0.5);
+    tone(523, 0.09, "triangle", 0.5, 0.07);
+    tone(659, 0.09, "triangle", 0.5, 0.14);
+    tone(1047, 0.22, "triangle", 0.55, 0.21);
+    tone(2093, 0.3, "sine", 0.2, 0.24);
+  },
+  /** big win for wheel jackpots */
+  jackpot() {
+    const seq: Array<[number, number]> = [
+      [523, 0], [659, 0.1], [784, 0.2], [1047, 0.3], [784, 0.42], [1047, 0.52], [1319, 0.62],
+    ];
+    for (const [f, d] of seq) tone(f, 0.22, "triangle", 0.6, d);
+    tone(2093, 0.6, "sine", 0.28, 0.74);
+  },
 };

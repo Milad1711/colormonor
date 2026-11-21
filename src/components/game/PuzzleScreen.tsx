@@ -15,7 +15,10 @@ import {
 import { ECONOMY, starsForMoves } from "@/game/decor";
 import { sfx } from "@/game/audio";
 import { levelTip } from "@/game/i18n";
-import { Tube, type PourInfo } from "./Tube";
+import { TubeBoardDOM } from "./Tube";
+import { Tubes3D } from "./Tubes3D";
+import { hasWebGL } from "@/game/three-kit";
+import type { TubeBoardApi } from "@/game/board-anim";
 import { Modal, Confetti } from "./Modal";
 import { Backdrop } from "./Backdrop";
 import {
@@ -26,18 +29,6 @@ import {
   useT,
 } from "./UiBits";
 import { toast } from "./toast";
-
-const FLY_OUT = 210;
-const FLY_BACK = 190;
-const UNIT_MS = 115;
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-function rowSplit(n: number): number[] {
-  if (n <= 5) return [n];
-  const half = Math.ceil(n / 2);
-  return [half, n - half];
-}
 
 export function PuzzleScreen() {
   const { t, n, lang } = useT();
@@ -53,13 +44,13 @@ export function PuzzleScreen() {
 
   const data = useMemo(() => getLevel(levelId), [levelId]);
   const initial = useMemo<State>(() => data.tubes.map((x) => [...x]), [data]);
+  const use3D = useMemo(() => hasWebGL(), []);
 
   const [tubes, setTubes] = useState<State>(() => initial.map((x) => [...x]));
   const [history, setHistory] = useState<State[]>([]);
   const [moves, setMoves] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pour, setPour] = useState<PourInfo | null>(null);
   const [justCompleted, setJustCompleted] = useState<number[]>([]);
   const [shakeIdx, setShakeIdx] = useState<number | null>(null);
   const [hinted, setHinted] = useState<{ from: number; to: number } | null>(null);
@@ -69,7 +60,7 @@ export function PuzzleScreen() {
   const [deadEnd, setDeadEnd] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
 
-  const tubeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const boardRef = useRef<TubeBoardApi | null>(null);
   const busyRef = useRef(false);
 
   const resetLevel = useCallback(() => {
@@ -77,7 +68,6 @@ export function PuzzleScreen() {
     setHistory([]);
     setMoves(0);
     setSelected(null);
-    setPour(null);
     setJustCompleted([]);
     setHinted(null);
     setWon(false);
@@ -96,51 +86,6 @@ export function PuzzleScreen() {
       sfx.win();
     },
     [data.par, finishLevel, levelId],
-  );
-
-  const animatePour = useCallback(
-    async (from: number, to: number, count: number, totalMs: number) => {
-      const srcEl = tubeRefs.current[from];
-      const dstEl = tubeRefs.current[to];
-      if (!srcEl || !dstEl || typeof srcEl.animate !== "function") {
-        await sleep(totalMs);
-        return;
-      }
-      const s = srcEl.getBoundingClientRect();
-      const d = dstEl.getBoundingClientRect();
-      const dx = d.left + d.width / 2 - (s.left + s.width / 2);
-      const dy = Math.min(d.top - s.top, 0) - 74;
-      const dir = dx >= 0 ? 1 : -1;
-      const pourDur = count * UNIT_MS + 110;
-      const total = FLY_OUT + pourDur + FLY_BACK;
-      const o1 = FLY_OUT / total;
-      const o2 = (FLY_OUT + pourDur) / total;
-      const anim = srcEl.animate(
-        [
-          { transform: "translate(0,0) rotate(0deg)", offset: 0 },
-          { transform: `translate(${dx * 0.45}px, ${dy - 16}px) rotate(0deg)`, offset: o1 * 0.7 },
-          { transform: `translate(${dx}px, ${dy}px) rotate(${dir * 58}deg)`, offset: o1 },
-          { transform: `translate(${dx}px, ${dy}px) rotate(${dir * 58}deg)`, offset: o2 },
-          { transform: `translate(${dx * 0.45}px, ${dy - 16}px) rotate(0deg)`, offset: o2 + (1 - o2) * 0.4 },
-          { transform: "translate(0,0) rotate(0deg)", offset: 1 },
-        ],
-        { duration: total, easing: "ease-in-out" },
-      );
-      // drain the top units of the source visually
-      const unitEls = srcEl.querySelectorAll<HTMLElement>("[data-unit]");
-      for (let gi = 0; gi < count; gi++) {
-        const idx = (tubes[from]?.length ?? 0) - 1 - gi;
-        const el = unitEls[idx];
-        if (el) {
-          el.animate(
-            [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
-            { duration: UNIT_MS, delay: FLY_OUT + gi * UNIT_MS, fill: "forwards", easing: "ease-in" },
-          );
-        }
-      }
-      await anim.finished.catch(() => sleep(total));
-    },
-    [tubes],
   );
 
   const handleTap = useCallback(
@@ -169,18 +114,19 @@ export function PuzzleScreen() {
         toast(t("invalid_move"), "error");
         return;
       }
-      // ---- valid pour ----
+      // ---- valid pour (3D board animates; state lands after it resolves) ----
       busyRef.current = true;
       setBusy(true);
       const from = selected;
       setSelected(null);
       const color = tubes[from][tubes[from].length - 1];
       const newState = applyMove(tubes, { from, to: i, count });
-      const totalMs = FLY_OUT + count * UNIT_MS + 110 + FLY_BACK;
-      setPour({ to: i, color, units: count, totalMs, unitMs: UNIT_MS, startMs: FLY_OUT });
       sfx.pour(count);
 
-      animatePour(from, i, count, totalMs).then(() => {
+      const anim: Promise<void> = boardRef.current
+        ? boardRef.current.pour(from, i, count, color)
+        : Promise.resolve();
+      anim.then(() => {
         const prevComplete = tubes.map(isTubeComplete);
         const nextComplete = newState.map(isTubeComplete);
         const newly = nextComplete
@@ -189,7 +135,6 @@ export function PuzzleScreen() {
         setHistory((h) => [...h, tubes.map((x) => [...x])]);
         setTubes(newState);
         setMoves((m) => m + 1);
-        setPour(null);
         busyRef.current = false;
         setBusy(false);
         if (newly.length > 0) {
@@ -202,7 +147,7 @@ export function PuzzleScreen() {
         }
       });
     },
-    [animatePour, finish, moves, selected, t, tubes, won],
+    [finish, moves, selected, t, tubes, won],
   );
 
   const onUndo = useCallback(() => {
@@ -241,12 +186,6 @@ export function PuzzleScreen() {
     setTimeout(() => setHinted(null), 2800);
   }, [levelId, spendHint, t, tubes, won]);
 
-  const rows = rowSplit(tubes.length);
-  const rowsRendered = rows.map((count, i) => ({
-    start: rows.slice(0, i).reduce((a, b) => a + b, 0),
-    count,
-  }));
-
   return (
     <div className="scene-root flex min-h-dvh flex-col">
       <Backdrop />
@@ -267,33 +206,30 @@ export function PuzzleScreen() {
         </div>
       </header>
 
-      {/* tubes (3D perspective board) */}
+      {/* board (WebGL 3D, with DOM fallback when WebGL is unavailable) */}
       <main className="flex flex-1 flex-col items-center justify-center gap-6 px-3 py-4">
-        <div className="tube-board flex w-full max-w-md flex-col items-center gap-9">
-          {rowsRendered.map(({ start, count }) => (
-            <div key={start} className="flex items-end justify-center gap-3 sm:gap-4">
-              {Array.from({ length: count }).map((_, k) => {
-                const idx = start + k;
-                return (
-                  <Tube
-                    key={idx}
-                    ref={(el) => {
-                      tubeRefs.current[idx] = el;
-                    }}
-                    index={idx}
-                    units={tubes[idx] ?? []}
-                    selected={selected === idx}
-                    hinted={hinted !== null && (hinted.from === idx || hinted.to === idx)}
-                    justCompleted={justCompleted.includes(idx)}
-                    pour={pour}
-                    onTap={handleTap}
-                    shake={shakeIdx === idx}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
+        {use3D ? (
+          <Tubes3D
+            ref={boardRef}
+            tubes={tubes}
+            selected={selected}
+            hinted={hinted}
+            justCompleted={justCompleted}
+            shakeIdx={shakeIdx}
+            onTap={handleTap}
+            className="h-[46vh] max-h-[420px] min-h-[240px] w-full max-w-lg"
+          />
+        ) : (
+          <TubeBoardDOM
+            ref={boardRef}
+            tubes={tubes}
+            selected={selected}
+            hinted={hinted}
+            justCompleted={justCompleted}
+            shakeIdx={shakeIdx}
+            onTap={handleTap}
+          />
+        )}
       </main>
 
       {/* bottom bar */}

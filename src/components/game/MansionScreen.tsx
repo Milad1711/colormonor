@@ -4,7 +4,7 @@ import { useGame } from "@/game/store";
 import { ROOMS, ROOM_BY_ID } from "@/game/decor";
 import { sfx } from "@/game/audio";
 import { BackButton, CoinBadge, GameButton, LockIcon, StarBadge, StarIcon, useT } from "./UiBits";
-import { MansionFacade } from "./MansionFacade";
+import { Mansion3D } from "./Mansion3D";
 import { Modal } from "./Modal";
 import { useState } from "react";
 import { toast } from "./toast";
@@ -19,6 +19,7 @@ export function MansionScreen() {
   const decor = useGame((s) => s.decor);
   const openRoom = useGame((s) => s.openRoom);
   const unlockRoom = useGame((s) => s.unlockRoom);
+  const openCoinStore = useGame((s) => s.openCoinStore);
   const goMenu = useGame((s) => s.goMenu);
   const [lockInfo, setLockInfo] = useState<string | null>(null);
 
@@ -32,12 +33,18 @@ export function MansionScreen() {
         </div>
         <div className="flex gap-2">
           <StarBadge value={starBalance} />
-          <CoinBadge value={coins} />
+          <CoinBadge value={coins} onClick={openCoinStore} />
         </div>
       </header>
       <p className="mt-1 text-center text-xs font-bold text-stone-500">{t("manor_subtitle")}</p>
 
-      <MansionFacade unlockedCount={unlockedRooms.length} className="mx-auto mt-3 w-full max-w-md drop-shadow" />
+      {/* live 3D manor — windows light up as wings unlock */}
+      <div className="relative mx-auto mt-2 h-[26vh] max-h-60 min-h-44 w-full max-w-md">
+        <Mansion3D unlockedCount={unlockedRooms.length} className="absolute inset-0" />
+        <span className="pointer-events-none absolute start-1 top-1 rounded-full border border-white/70 bg-white/75 px-2.5 py-0.5 text-[10px] font-black text-stone-500 shadow-sm backdrop-blur">
+          3D
+        </span>
+      </div>
 
       <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-3">
         {ROOMS.map((room) => {
