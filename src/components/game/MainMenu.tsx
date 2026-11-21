@@ -2,6 +2,7 @@
 
 import { useGame } from "@/game/store";
 import { MansionFacade } from "./MansionFacade";
+import { Backdrop } from "./Backdrop";
 import {
   CoinBadge,
   GameButton,
@@ -24,7 +25,9 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const setLanguage = useGame((s) => s.setLanguage);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-[#FDF3E0] via-[#FAE7C8] to-[#F6D9A8] px-4 pb-8 pt-5">
+    <div className="scene-root flex min-h-dvh flex-col items-center px-4 pb-8 pt-5">
+      <Backdrop />
+
       {/* top badges */}
       <div className="flex w-full max-w-md items-center justify-between">
         <div className="flex items-center gap-2">
@@ -38,7 +41,7 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
             onOpenSettings();
           }}
           aria-label={t("settings")}
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-200 bg-white/85 text-stone-600 shadow-sm active:scale-95"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-stone-600 shadow-[0_3px_10px_rgba(120,80,30,0.15)] backdrop-blur active:scale-95"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
             <circle cx="12" cy="12" r="3.2" />
@@ -47,15 +50,21 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
         </button>
       </div>
 
-      {/* logo */}
-      <div className="mt-2 w-full max-w-md">
-        <MansionFacade unlockedCount={unlockedRooms.length} className="w-full drop-shadow-md" />
+      {/* 3D floating manor hero */}
+      <div className="relative mt-1 w-full max-w-md">
+        <div
+          className="ground-shadow absolute bottom-1 left-1/2 h-7 w-4/5 -translate-x-1/2 rounded-[100%]"
+          aria-hidden
+        />
+        <MansionFacade unlockedCount={unlockedRooms.length} className="mf-float relative w-full" />
       </div>
 
-      <h1 className="mt-1 text-center text-3xl font-black tracking-wide text-orange-700 drop-shadow-sm">
+      <h1 className="title3d mt-2 text-center text-4xl font-black tracking-wide">
         {t("app_name")}
       </h1>
-      <p className="mt-1 text-center text-sm font-bold text-stone-500">{t("app_tagline")}</p>
+      <p className="mt-2 rounded-full border border-white/70 bg-white/70 px-4 py-1 text-center text-sm font-bold text-stone-600 shadow-sm backdrop-blur">
+        {t("app_tagline")}
+      </p>
 
       {/* actions */}
       <div className="mt-6 flex w-full max-w-xs flex-col gap-3">
@@ -76,7 +85,7 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
       </div>
 
       {/* quick language switch */}
-      <div className="mt-6 flex items-center gap-1 rounded-full border border-stone-200 bg-white/80 p-1 shadow-sm">
+      <div className="mt-6 flex items-center gap-1 rounded-full border border-white/70 bg-white/80 p-1 shadow-sm backdrop-blur">
         {(["fa", "en"] as const).map((l) => (
           <button
             key={l}

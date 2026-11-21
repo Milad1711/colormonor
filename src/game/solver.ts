@@ -73,7 +73,7 @@ function genMoves(st: State): ScoredMove[] {
     if (src.length === 0) continue;
     const top = src[src.length - 1];
     let run = 1;
-    for (let i = src.length - 2; i >= 0 && src[i] === top; i++) run++;
+    for (let i = src.length - 2; i >= 0 && src[i] === top; i--) run++;
     // never pour out of an already complete tube
     if (src.length === TUBE_CAPACITY && run === TUBE_CAPACITY) continue;
     const srcSingle = run === src.length;

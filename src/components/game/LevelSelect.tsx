@@ -6,6 +6,7 @@ import { sfx } from "@/game/audio";
 import { BackButton, CoinBadge, LockIcon, StarIcon, useT } from "./UiBits";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
+import { Backdrop } from "./Backdrop";
 
 export function LevelSelect() {
   const { t, n } = useT();
@@ -16,7 +17,8 @@ export function LevelSelect() {
   const goMenu = useGame((s) => s.goMenu);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] to-[#F6D9A8] px-4 pb-8 pt-4">
+    <div className="scene-root flex min-h-dvh flex-col px-4 pb-8 pt-4">
+      <Backdrop />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BackButton onClick={goMenu} label={t("back")} />

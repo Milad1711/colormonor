@@ -18,6 +18,7 @@ import { DecorPreview } from "./DecorArt";
 import { Modal } from "./Modal";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
+import { Backdrop } from "./Backdrop";
 
 /** item id -> the unique slot that hosts it */
 const SLOT_FOR_ITEM = new Map<string, string>();
@@ -103,7 +104,8 @@ export function ShopScreen() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] to-[#F6D9A8] px-4 pb-8 pt-4">
+    <div className="scene-root flex min-h-dvh flex-col px-4 pb-8 pt-4">
+      <Backdrop />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BackButton onClick={goBack} label={t("back")} />
@@ -144,7 +146,7 @@ export function ShopScreen() {
                 openDetail(it.id);
               }}
               className={cn(
-                "relative flex flex-col items-center rounded-3xl border-2 bg-white/90 p-2.5 text-center shadow-sm transition-transform active:scale-95",
+                "relative flex flex-col items-center rounded-3xl border-2 bg-white/90 p-2.5 text-center shadow-[0_6px_16px_rgba(120,80,30,0.14)] backdrop-blur transition-transform active:scale-95",
                 owned ? "border-emerald-300" : "border-amber-200",
                 contextItem === it.id && "ring-2 ring-orange-400",
               )}

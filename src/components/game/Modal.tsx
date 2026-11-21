@@ -21,7 +21,7 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/55 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/45 p-4 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
@@ -34,7 +34,7 @@ export function Modal({
     >
       <div
         className={cn(
-          "modal-pop relative w-full max-w-sm rounded-3xl border-4 border-amber-100 bg-[#FFF9EF] p-5 shadow-2xl",
+          "modal-pop relative w-full max-w-sm rounded-[28px] border-4 border-white/80 bg-gradient-to-b from-[#FFFBEF] to-[#FFF2D9] p-5 shadow-[0_24px_60px_rgba(124,58,12,0.35)]",
           className,
         )}
         onClick={(e) => e.stopPropagation()}

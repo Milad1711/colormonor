@@ -9,6 +9,7 @@ import { Modal } from "./Modal";
 import { useState } from "react";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
+import { Backdrop } from "./Backdrop";
 
 export function MansionScreen() {
   const { t, n } = useT();
@@ -22,7 +23,8 @@ export function MansionScreen() {
   const [lockInfo, setLockInfo] = useState<string | null>(null);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] to-[#F6D9A8] px-4 pb-8 pt-4">
+    <div className="scene-root flex min-h-dvh flex-col px-4 pb-8 pt-4">
+      <Backdrop />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BackButton onClick={goMenu} label={t("back")} />
@@ -46,7 +48,7 @@ export function MansionScreen() {
             <div
               key={room.id}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-3xl border-2 bg-white/85 p-3.5 shadow-sm",
+                "flex items-center justify-between gap-3 rounded-3xl border-2 bg-white/85 p-3.5 shadow-[0_6px_18px_rgba(120,80,30,0.14)] backdrop-blur transition-transform active:scale-[0.99]",
                 locked ? "border-stone-200 opacity-90" : complete ? "border-amber-300 bg-amber-50/90" : "border-emerald-200",
               )}
             >

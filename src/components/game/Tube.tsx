@@ -50,7 +50,8 @@ export const Tube = forwardRef<HTMLButtonElement, TubeProps>(function Tube(
         complete && "tube-complete",
       )}
     >
-      {/* liquid units */}
+      {/* ground shadow + liquid units */}
+      <span className="tube-shadow3d" aria-hidden />
       <div className="tube-units">
         {units.map((c, i) => {
           const col = liquid(c);
@@ -83,7 +84,8 @@ export const Tube = forwardRef<HTMLButtonElement, TubeProps>(function Tube(
             );
           })}
       </div>
-      {/* glass gloss */}
+      {/* glass curvature + gloss */}
+      <div className="tube-belly" />
       <div className="tube-gloss" />
       <div className="tube-rim" />
       {complete && <div className="tube-glow" />}

@@ -17,6 +17,7 @@ import { sfx } from "@/game/audio";
 import { levelTip } from "@/game/i18n";
 import { Tube, type PourInfo } from "./Tube";
 import { Modal, Confetti } from "./Modal";
+import { Backdrop } from "./Backdrop";
 import {
   BackButton,
   CoinBadge,
@@ -247,17 +248,18 @@ export function PuzzleScreen() {
   }));
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] via-[#FAE7C8] to-[#F6D9A8]">
+    <div className="scene-root flex min-h-dvh flex-col">
+      <Backdrop />
       {/* header */}
       <header className="flex items-center justify-between gap-2 px-3 pt-3">
         <div className="flex items-center gap-2">
           <BackButton onClick={goLevels} label={t("back")} />
-          <div className="rounded-2xl border border-amber-200 bg-white/85 px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm">
+          <div className="rounded-2xl border border-white/70 bg-white/85 px-3 py-1.5 text-sm font-bold text-stone-700 shadow-[0_3px_10px_rgba(120,80,30,0.15)] backdrop-blur">
             {t("level")} {n(levelId)}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="rounded-2xl border border-stone-200 bg-white/85 px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm">
+          <div className="rounded-2xl border border-white/70 bg-white/85 px-3 py-1.5 text-sm font-bold text-stone-700 shadow-[0_3px_10px_rgba(120,80,30,0.15)] backdrop-blur">
             <span className="opacity-70">{t("moves_label")}: </span>
             <span className="tabular-nums">{n(moves)}</span>
           </div>
@@ -265,9 +267,9 @@ export function PuzzleScreen() {
         </div>
       </header>
 
-      {/* tubes */}
+      {/* tubes (3D perspective board) */}
       <main className="flex flex-1 flex-col items-center justify-center gap-6 px-3 py-4">
-        <div className="flex w-full max-w-md flex-col items-center gap-8">
+        <div className="tube-board flex w-full max-w-md flex-col items-center gap-9">
           {rowsRendered.map(({ start, count }) => (
             <div key={start} className="flex items-end justify-center gap-3 sm:gap-4">
               {Array.from({ length: count }).map((_, k) => {
@@ -358,8 +360,20 @@ export function PuzzleScreen() {
       {/* win */}
       {won && result && <Confetti />}
       <Modal open={won && result !== null} closable={false} ariaLabel={t("win_title")}>
-        <div className="text-center">
-          <h2 className="text-2xl font-black text-orange-600">{t("win_title")}</h2>
+        <div className="relative text-center">
+          {/* trophy with rays */}
+          <div className="relative mx-auto -mt-10 mb-1 flex size-24 items-center justify-center">
+            <div className="win-rays absolute inset-0" aria-hidden />
+            <div className="relative flex size-[74px] items-center justify-center rounded-full border-4 border-white/70 bg-gradient-to-b from-amber-300 to-orange-500 shadow-[0_10px_24px_rgba(234,88,12,0.45),inset_0_2px_8px_rgba(255,255,255,0.6)]">
+              <svg viewBox="0 0 24 24" className="size-10 text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M7 4h10v4.5a5 5 0 01-10 0V4z" fill="currentColor" stroke="none" />
+                <path d="M7 5.5H4.6a2.6 2.6 0 002.9 3.9M17 5.5h2.4a2.6 2.6 0 01-2.9 3.9" />
+                <path d="M12 13.5v2.5" />
+                <path d="M9 16h6l1 4H8l1-4z" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="title3d text-3xl font-black">{t("win_title")}</h2>
           <p className="mt-1 text-sm font-bold text-stone-500">{t("win_subtitle")}</p>
           <div className="mt-4 flex items-center justify-center gap-2">
             {[1, 2, 3].map((s) => (
@@ -368,26 +382,26 @@ export function PuzzleScreen() {
                 className={cn("star-pop", result && s <= result.stars ? "" : "opacity-40")}
                 style={{ animationDelay: `${s * 180}ms` }}
               >
-                <StarIcon className="size-11" filled={!!result && s <= result.stars} />
+                <StarIcon className="size-12" filled={!!result && s <= result.stars} />
               </span>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-center gap-2 text-lg font-black text-amber-700">
-            <span className="coin-pop">+{n(result?.coins ?? 0)}</span>
+          <div className="coin-pop mx-auto mt-4 flex w-fit items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-4 py-1.5 text-lg font-black text-amber-800 shadow-sm">
+            +{n(result?.coins ?? 0)}
             <span className="text-sm font-bold text-stone-500">{t("coins_earned")}</span>
           </div>
           {result?.firstClear && (
-            <div className="mt-1 text-xs font-bold text-emerald-600">
+            <div className="mt-1.5 text-xs font-bold text-emerald-600">
               {t("stars_earned")}: {n(result.stars)}
             </div>
           )}
           <div className="mt-5 grid grid-cols-1 gap-2.5">
             {levelId < 50 ? (
-              <GameButton className="w-full" onClick={() => playLevel(levelId + 1)}>
+              <GameButton className="w-full text-lg" onClick={() => playLevel(levelId + 1)}>
                 {t("next_level")} →
               </GameButton>
             ) : (
-              <GameButton className="w-full" variant="gold" onClick={goManor}>
+              <GameButton className="w-full text-lg" variant="gold" onClick={goManor}>
                 {t("go_manor")}
               </GameButton>
             )}

@@ -34,11 +34,11 @@ export function GameButton({
 }) {
   const variants: Record<string, string> = {
     primary:
-      "bg-gradient-to-b from-amber-400 to-orange-500 text-white border-orange-600/40 shadow-[0_4px_0_#c2410c]",
+      "btn-shine bg-gradient-to-b from-amber-400 via-orange-400 to-orange-500 text-white border-orange-600/40 shadow-[0_4px_0_#c2410c,inset_0_2px_0_rgba(255,255,255,0.45)]",
     secondary:
-      "bg-gradient-to-b from-emerald-400 to-teal-500 text-white border-teal-600/40 shadow-[0_4px_0_#0f766e]",
+      "bg-gradient-to-b from-emerald-400 via-teal-400 to-teal-500 text-white border-teal-600/40 shadow-[0_4px_0_#0f766e,inset_0_2px_0_rgba(255,255,255,0.4)]",
     gold:
-      "bg-gradient-to-b from-yellow-300 to-amber-400 text-amber-950 border-amber-600/40 shadow-[0_4px_0_#b45309]",
+      "btn-shine bg-gradient-to-b from-yellow-300 via-amber-300 to-amber-400 text-amber-950 border-amber-600/40 shadow-[0_4px_0_#b45309,inset_0_2px_0_rgba(255,255,255,0.6)]",
     ghost:
       "bg-white/85 text-stone-700 border-stone-300 shadow-[0_3px_0_#d6d3d1]",
     danger:
@@ -72,7 +72,7 @@ export function CoinBadge({ value, onClick }: { value: number; onClick?: () => v
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-full border border-amber-200 bg-white/90 px-3 py-1 shadow-sm",
+        "flex items-center gap-1.5 rounded-full border border-white/70 bg-white/85 px-3 py-1 shadow-[0_3px_10px_rgba(120,80,30,0.16)] backdrop-blur",
         onClick && "cursor-pointer hover:bg-amber-50",
       )}
       title={t(lang, "coins")}
@@ -87,7 +87,7 @@ export function StarBadge({ value }: { value: number }) {
   const { lang } = useT();
   return (
     <div
-      className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-white/90 px-3 py-1 shadow-sm"
+      className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/85 px-3 py-1 shadow-[0_3px_10px_rgba(120,80,30,0.16)] backdrop-blur"
       title={t(lang, "stars")}
     >
       <StarIcon className="size-5" filled />
@@ -140,7 +140,7 @@ export function BackButton({ onClick, label }: { onClick: () => void; label: str
         onClick();
       }}
       aria-label={label}
-      className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-200 bg-white/85 px-3 text-stone-700 shadow-sm active:scale-95"
+      className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/85 px-3 text-stone-700 shadow-[0_3px_10px_rgba(120,80,30,0.15)] backdrop-blur active:scale-95"
     >
       <svg viewBox="0 0 24 24" className={cn("size-5", lang === "fa" && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M15 5l-7 7 7 7" />

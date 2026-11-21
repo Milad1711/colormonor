@@ -8,6 +8,7 @@ import { BackButton, CoinBadge, GameButton, useT } from "./UiBits";
 import { RoomScene } from "./RoomScene";
 import { DecorArt } from "./DecorArt";
 import { Modal, Confetti } from "./Modal";
+import { Backdrop } from "./Backdrop";
 
 export function RoomScreen() {
   const { t } = useT();
@@ -39,7 +40,8 @@ export function RoomScreen() {
   const complete = filled === room.slots.length;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#FDF3E0] to-[#F6D9A8] px-4 pb-8 pt-4">
+    <div className="scene-root flex min-h-dvh flex-col px-4 pb-8 pt-4">
+      <Backdrop />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BackButton onClick={goManor} label={t("back")} />
@@ -49,7 +51,7 @@ export function RoomScreen() {
       </header>
 
       {/* scene */}
-      <div className="relative mx-auto mt-3 w-full max-w-md overflow-hidden rounded-3xl border-4 border-amber-100 shadow-lg">
+      <div className="relative mx-auto mt-3 w-full max-w-md overflow-hidden rounded-[26px] border-4 border-white/80 shadow-[0_16px_40px_rgba(120,70,20,0.28)]">
         <RoomScene room={room.id} className="block w-full" />
         {room.slots.map((slot) => {
           const owned = decor[slot.id];
