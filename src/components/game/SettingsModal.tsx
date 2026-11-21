@@ -7,6 +7,7 @@ import { GameButton, useT } from "./UiBits";
 import { Modal } from "./Modal";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
+import { getDeviceId } from "@/game/device";
 import type { Lang } from "@/game/i18n";
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -75,6 +76,22 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               setGuideEnabled(v);
             }}
           />
+        </div>
+
+        {/* device id + admin link */}
+        <div className="mt-2.5 rounded-2xl border border-stone-200 bg-white p-3">
+          <div className="text-[11px] font-bold text-stone-400">{t("device_id")}</div>
+          <div dir="ltr" className="truncate text-left font-mono text-[11px] text-stone-500">
+            {getDeviceId()}
+          </div>
+          <a
+            href="/admin"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex min-h-8 items-center gap-1 rounded-xl bg-stone-100 px-3 text-[11px] font-black text-stone-500 active:scale-95"
+          >
+            🔧 {t("admin_panel")}
+          </a>
         </div>
 
         {/* reset */}

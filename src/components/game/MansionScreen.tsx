@@ -22,6 +22,18 @@ export function MansionScreen() {
   const openCoinStore = useGame((s) => s.openCoinStore);
   const goMenu = useGame((s) => s.goMenu);
   const [lockInfo, setLockInfo] = useState<string | null>(null);
+  /** room card currently hovered (mouse) — shows the "why locked" bubble */
+  const [hoverRoom, setHoverRoom] = useState<string | null>(null);
+
+  const ROOM_ICONS: Record<string, { icon: string; chip: string; bar: string }> = {
+    living: { icon: "🛋️", chip: "from-amber-300 to-orange-400", bar: "from-amber-400 to-orange-500" },
+    library: { icon: "📚", chip: "from-sky-300 to-blue-400", bar: "from-sky-400 to-blue-500" },
+    kitchen: { icon: "🍳", chip: "from-rose-300 to-pink-400", bar: "from-rose-400 to-pink-500" },
+    bedroom: { icon: "🛏️", chip: "from-violet-300 to-purple-400", bar: "from-violet-400 to-purple-500" },
+    greenhouse: { icon: "🪴", chip: "from-lime-300 to-green-400", bar: "from-lime-400 to-green-500" },
+    garden: { icon: "⛲", chip: "from-teal-300 to-emerald-400", bar: "from-teal-400 to-emerald-500" },
+    hallway: { icon: "🪜", chip: "from-yellow-300 to-amber-400", bar: "from-yellow-400 to-amber-500" },
+  };
 
   return (
     <div className="scene-root flex min-h-dvh flex-col px-4 pb-8 pt-4">
@@ -33,7 +45,7 @@ export function MansionScreen() {
         </div>
         <div className="flex gap-2">
           <StarBadge value={starBalance} />
-          <CoinBadge value={coins} onClick={openCoinStore} />
+          <CoinBadge value={coins} onClick={() => openCoinStore()} />
         </div>
       </header>
       <p className="mt-1 text-center text-xs font-bold text-stone-500">{t("manor_subtitle")}</p>
@@ -51,14 +63,29 @@ export function MansionScreen() {
           const locked = !unlockedRooms.includes(room.id);
           const filled = room.slots.filter((s) => decor[s.id]).length;
           const complete = filled === room.slots.length;
+          const ic = ROOM_ICONS[room.id] ?? ROOM_ICONS.living;
+          const missingStars = Math.max(0, room.unlockStars - starBalance);
           return (
             <div
               key={room.id}
+              onMouseEnter={() => locked && setHoverRoom(room.id)}
+              onMouseLeave={() => setHoverRoom((cur) => (cur === room.id ? null : cur))}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-3xl border-2 bg-white/85 p-3.5 shadow-[0_6px_18px_rgba(120,80,30,0.14)] backdrop-blur transition-transform active:scale-[0.99]",
+                "relative overflow-visible rounded-3xl border-2 bg-white/85 p-3.5 pl-4 shadow-[0_6px_18px_rgba(120,80,30,0.14)] backdrop-blur transition-transform active:scale-[0.99]",
                 locked ? "border-stone-200 opacity-90" : complete ? "border-amber-300 bg-amber-50/90" : "border-emerald-200",
               )}
             >
+              {/* room icon chip */}
+              <div
+                className={cn(
+                  "pointer-events-none absolute -end-4 -top-5 flex size-16 rotate-12 items-center justify-center rounded-2xl bg-gradient-to-b text-3xl shadow-md",
+                  ic.chip,
+                  locked && "opacity-30 grayscale",
+                )}
+                aria-hidden
+              >
+                {locked ? "🔒" : ic.icon}
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   {locked && <LockIcon className="size-4 shrink-0" />}
@@ -72,7 +99,7 @@ export function MansionScreen() {
                 <div className="mt-1 flex items-center gap-2">
                   <div className="h-2 w-28 overflow-hidden rounded-full bg-stone-200">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
+                      className={cn("h-full rounded-full bg-gradient-to-r transition-all", ic.bar)}
                       style={{ width: `${(filled / room.slots.length) * 100}%` }}
                     />
                   </div>
@@ -82,27 +109,56 @@ export function MansionScreen() {
                 </div>
               </div>
               {locked ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfx.tap();
-                    if (starBalance < room.unlockStars) {
-                      sfx.error();
-                      toast(t("not_enough_stars"), "error");
-                      setLockInfo(room.id);
-                      return;
-                    }
-                    const ok = unlockRoom(room.id);
-                    if (ok) {
-                      sfx.unlock();
-                      toast(t("room_unlocked_toast"), "success");
-                    }
-                  }}
-                  className="flex min-h-11 shrink-0 items-center gap-1 rounded-2xl border border-amber-300 bg-amber-100 px-3 text-sm font-black text-amber-800 active:scale-95"
-                >
-                  <StarIcon className="size-4" filled />
-                  {n(room.unlockStars)}
-                </button>
+                <>
+                  {/* hover bubble — explains exactly WHY the wing is locked
+                      and HOW to unlock it (React-state hover: deterministic
+                      on mouse; touch users tap the button for details) */}
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute -top-2 start-3 end-3 z-20 -translate-y-full rounded-2xl border-2 border-stone-200 bg-white/95 p-3 shadow-[0_12px_30px_rgba(80,60,30,0.25)] backdrop-blur transition-opacity duration-200",
+                      hoverRoom === room.id ? "opacity-100" : "opacity-0",
+                    )}
+                    role="tooltip"
+                  >
+                    <p className="flex items-center gap-1.5 text-xs font-black text-stone-700">
+                      <LockIcon className="size-3.5 shrink-0" />
+                      {t("room_locked_title")}
+                    </p>
+                    <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold leading-5 text-amber-700">
+                      <StarIcon className="size-3.5 shrink-0" filled />
+                      {t("locked_needs_before")} {n(room.unlockStars)} {t("stars")} {t("locked_needs_after")}
+                      {missingStars > 0 && (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-800 tabular-nums">
+                          +{n(missingStars)}
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[10px] font-bold leading-4 text-stone-500">{t("locked_how")}</p>
+                    <span className="absolute bottom-0 start-10 size-3 -translate-y-1/2 rotate-45 border-b-2 border-e-2 border-stone-200 bg-white" aria-hidden />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.tap();
+                      if (starBalance < room.unlockStars) {
+                        sfx.error();
+                        toast(t("not_enough_stars"), "error");
+                        setLockInfo(room.id);
+                        return;
+                      }
+                      const ok = unlockRoom(room.id);
+                      if (ok) {
+                        sfx.unlock();
+                        toast(t("room_unlocked_toast"), "success");
+                      }
+                    }}
+                    className="mt-2 flex min-h-11 w-fit items-center gap-1 rounded-2xl border border-amber-300 bg-amber-100 px-3 text-sm font-black text-amber-800 active:scale-95"
+                  >
+                    <StarIcon className="size-4" filled />
+                    {n(room.unlockStars)}
+                    <span className="ms-1 text-[10px] font-bold text-amber-600">· {t("locked_tap_hint")}</span>
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
@@ -110,7 +166,7 @@ export function MansionScreen() {
                     sfx.tap();
                     openRoom(room.id);
                   }}
-                  className="min-h-11 shrink-0 rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 px-4 text-sm font-black text-white shadow-[0_3px_0_#0f766e] active:translate-y-[2px] active:shadow-none"
+                  className="mt-2 min-h-11 w-fit rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 px-4 text-sm font-black text-white shadow-[0_3px_0_#0f766e] active:translate-y-[2px] active:shadow-none"
                 >
                   {t("enter_manor")}
                 </button>

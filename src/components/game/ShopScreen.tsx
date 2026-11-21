@@ -121,7 +121,7 @@ export function ShopScreen() {
             )}
           </div>
         </div>
-        <CoinBadge value={coins} onClick={openCoinStore} />
+        <CoinBadge value={coins} onClick={() => openCoinStore()} />
       </header>
       <p className="mt-1 text-center text-[11px] font-bold text-stone-500">{t("price_change_note")}</p>
 
@@ -135,8 +135,8 @@ export function ShopScreen() {
 
       {/* coin bank entries */}
       <div className="mx-auto mt-3 flex w-full max-w-md gap-3">
-        <WheelEntryButton onOpen={openCoinStore} />
-        <PacksEntryButton onOpen={openCoinStore} />
+        <WheelEntryButton onOpen={() => openCoinStore("wheel")} />
+        <PacksEntryButton onOpen={() => openCoinStore("packs")} />
       </div>
 
       {/* category tabs */}

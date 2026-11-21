@@ -47,9 +47,9 @@ export function Modal({
               sfx.tap();
               onClose();
             }}
-            className="absolute end-3 top-3 flex size-9 items-center justify-center rounded-full bg-stone-200 text-stone-600 shadow-sm active:scale-90"
+            className="absolute end-2.5 top-2.5 z-30 flex size-11 items-center justify-center rounded-full border-2 border-stone-200/80 bg-stone-200/95 text-stone-600 shadow-md backdrop-blur transition-transform active:scale-90"
           >
-            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>

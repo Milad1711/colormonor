@@ -10,8 +10,12 @@ import {
   useT,
 } from "./UiBits";
 import { WheelEntryButton, PacksEntryButton } from "./LuckyWheel";
+import { LeaderboardModal } from "./LeaderboardModal";
+import { ReferralModal } from "./ReferralModal";
 import { sfx } from "@/game/audio";
 import { fmtNum } from "@/game/i18n";
+import { TOTAL_LEVELS } from "@/game/levels";
+import { useRef, useState } from "react";
 
 export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { t, n, lang } = useT();
@@ -25,6 +29,17 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const goShop = useGame((s) => s.goShop);
   const openCoinStore = useGame((s) => s.openCoinStore);
   const setLanguage = useGame((s) => s.setLanguage);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(false);
+  // hidden admin entry: five taps on the footer line opens the admin panel
+  const adminTaps = useRef(0);
+  const adminTap = () => {
+    adminTaps.current += 1;
+    if (adminTaps.current >= 5) {
+      adminTaps.current = 0;
+      window.open("/admin", "_blank");
+    }
+  };
 
   return (
     <div className="scene-root flex min-h-dvh flex-col items-center px-4 pb-8 pt-4">
@@ -34,7 +49,7 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
       <div className="flex w-full max-w-md items-center justify-between">
         <div className="flex items-center gap-2">
           <StarBadge value={starBalance} />
-          <CoinBadge value={coins} onClick={openCoinStore} />
+          <CoinBadge value={coins} onClick={() => openCoinStore()} />
         </div>
         <button
           type="button"
@@ -87,9 +102,36 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
         <GameButton variant="gold" className="w-full" onClick={() => goShop()}>
           {t("shop")}
         </GameButton>
-        <div className="flex gap-3">
-          <WheelEntryButton onOpen={openCoinStore} />
-          <PacksEntryButton onOpen={openCoinStore} />
+        <div className="grid grid-cols-2 gap-3">
+          <WheelEntryButton onOpen={() => openCoinStore("wheel")} />
+          <PacksEntryButton onOpen={() => openCoinStore("packs")} />
+          <button
+            type="button"
+            onClick={() => {
+              sfx.tap();
+              setBoardOpen(true);
+            }}
+            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-3xl border-2 border-amber-200 bg-gradient-to-b from-white to-amber-50 px-2 text-amber-800 shadow-[0_4px_0_#e7c98f] transition-transform active:translate-y-[3px] active:shadow-none"
+          >
+            <span className="text-xl leading-none">🏆</span>
+            <span className="text-sm font-black">{t("leaderboard")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              sfx.tap();
+              setRefOpen(true);
+            }}
+            className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-3xl border-2 border-emerald-200 bg-gradient-to-b from-white to-emerald-50 px-2 text-emerald-700 shadow-[0_4px_0_#a7f3d0] transition-transform active:translate-y-[3px] active:shadow-none"
+          >
+            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="9" cy="8" r="3.2" />
+              <path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6" />
+              <circle cx="17" cy="9.5" r="2.4" />
+              <path d="M15.5 14.6c2.6-.4 4.6 1 5 3.4" />
+            </svg>
+            <span className="text-sm font-black">{t("referral")}</span>
+          </button>
         </div>
       </div>
 
@@ -112,9 +154,16 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
           </button>
         ))}
       </div>
-      <p className="mt-3 text-center text-[11px] font-bold text-stone-400">
-        {fmtNum(lang, 50)} {t("levels")} · {t("manor_subtitle")}
-      </p>
+      <button
+        type="button"
+        onClick={adminTap}
+        className="mt-3 text-center text-[11px] font-bold text-stone-400"
+      >
+        {fmtNum(lang, TOTAL_LEVELS)} {t("levels")} · {t("manor_subtitle")}
+      </button>
+
+      <LeaderboardModal open={boardOpen} onClose={() => setBoardOpen(false)} />
+      <ReferralModal open={refOpen} onClose={() => setRefOpen(false)} />
     </div>
   );
 }

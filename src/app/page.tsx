@@ -14,6 +14,7 @@ import { CoinStoreModal } from "@/components/game/CoinStoreModal";
 import { SettingsModal } from "@/components/game/SettingsModal";
 import { MansionFacade } from "@/components/game/MansionFacade";
 import { Backdrop } from "@/components/game/Backdrop";
+import { syncNow } from "@/game/net";
 import type { Lang } from "@/game/i18n";
 
 function Splash() {
@@ -87,6 +88,20 @@ export default function Page() {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
   }, [language]);
+  // first connect of the session: report progress, receive admin coin gifts
+  useEffect(() => {
+    if (mounted && language) {
+      const id = setTimeout(() => syncNow(true), 1500);
+      return () => clearTimeout(id);
+    }
+  }, [mounted, language]);
+  // every screen change keeps the server wallet + rank fresh (throttled in net.ts)
+  useEffect(() => {
+    if (mounted && language && screen) {
+      const id = setTimeout(() => syncNow(), 600);
+      return () => clearTimeout(id);
+    }
+  }, [mounted, language, screen]);
 
   if (!mounted) return <Splash />;
   if (!language) return <LanguagePicker />;

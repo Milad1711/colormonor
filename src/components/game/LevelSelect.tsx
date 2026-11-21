@@ -25,7 +25,7 @@ export function LevelSelect() {
           <BackButton onClick={goMenu} label={t("back")} />
           <h1 className="text-lg font-black text-stone-800">{t("levels")}</h1>
         </div>
-        <CoinBadge value={coins} onClick={openCoinStore} />
+        <CoinBadge value={coins} onClick={() => openCoinStore()} />
       </header>
       <p className="mt-1 text-center text-xs font-bold text-stone-500">{t("level_select_sub")}</p>
 

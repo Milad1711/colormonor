@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema for Color Manor online services:
+// - Player   : one row per device, powers the leaderboard + admin coin tools
+// - Grant    : a coin gift issued by the admin panel, claimed by the client
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +11,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Player {
+  id            String    @id @default(cuid())
+  deviceId      String    @unique
+  name          String?
+  coins         Int       @default(0)
+  stars         Int       @default(0)
+  levelsCleared Int       @default(0)
+  score         Int       @default(0)
+  currentLevel  Int       @default(1)
+  // referral program: short invite code + one-time "joined via code" flag
+  refCode       String?   @unique
+  refBy         String?
+  refClaimedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  grants        Grant[]
 }
 
-model Post {
+model Grant {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  deviceId  String
+  amount    Int
+  reason    String   @default("")
+  claimed   Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  claimedAt DateTime?
+  player    Player?  @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  @@index([deviceId])
 }

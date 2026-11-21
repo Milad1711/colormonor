@@ -16,6 +16,7 @@ import {
   switchCost,
 } from "./decor";
 import { setSoundEnabled } from "./audio";
+import { TOTAL_LEVELS } from "./levels";
 
 export type Screen =
   | "menu"
@@ -43,7 +44,12 @@ interface SaveShape {
   currentLevel: number;
   /** local YYYY-MM-DD of the last free daily spin (null = never spun) */
   lastWheelDate: string | null;
+  /** leaderboard display name (null = auto name from device id) */
+  playerName: string | null;
 }
+
+/** which tab the Coin Bank opens on (wheel = lucky spin, packs = bundles) */
+export type CoinStoreTab = "wheel" | "packs";
 
 interface UIState {
   screen: Screen;
@@ -55,6 +61,7 @@ interface UIState {
   roomJustCompleted: string | null;
   /** global coin-bank modal (lucky wheel + coin packs) */
   coinStoreOpen: boolean;
+  coinStoreTab: CoinStoreTab;
 }
 
 export interface GameStore extends SaveShape, UIState {
@@ -84,9 +91,12 @@ export interface GameStore extends SaveShape, UIState {
   clearRoomJustCompleted: () => void;
 
   // coin bank (wheel + packs)
-  openCoinStore: () => void;
+  openCoinStore: (tab?: CoinStoreTab) => void;
   closeCoinStore: () => void;
+  setCoinStoreTab: (tab: CoinStoreTab) => void;
   addCoins: (amount: number) => void;
+  /** leaderboard display name */
+  setPlayerName: (name: string | null) => void;
   /** true when the free daily spin has not been used for today's local date */
   canSpinToday: () => boolean;
   /** records the free spin for today; returns false if already used */
@@ -105,6 +115,7 @@ const initialSave: SaveShape = {
   decor: {},
   currentLevel: 1,
   lastWheelDate: null,
+  playerName: null,
 };
 
 const initialUI: UIState = {
@@ -114,6 +125,7 @@ const initialUI: UIState = {
   shopContext: null,
   roomJustCompleted: null,
   coinStoreOpen: false,
+  coinStoreTab: "wheel",
 };
 
 export const useGame = create<GameStore>()(
@@ -125,8 +137,9 @@ export const useGame = create<GameStore>()(
       goMenu: () => set({ screen: "menu", activeRoom: null, shopContext: null }),
       goLevels: () => set({ screen: "levels" }),
       goManor: () => set({ screen: "manor", activeRoom: null, shopContext: null }),
-      openCoinStore: () => set({ coinStoreOpen: true }),
+      openCoinStore: (tab) => set({ coinStoreOpen: true, coinStoreTab: tab ?? "wheel" }),
       closeCoinStore: () => set({ coinStoreOpen: false }),
+      setCoinStoreTab: (tab) => set({ coinStoreTab: tab }),
       openRoom: (roomId) => set({ screen: "room", activeRoom: roomId, shopContext: null }),
       goShop: (ctx) =>
         set({ screen: "shop", shopContext: ctx ?? null }),
@@ -168,7 +181,7 @@ export const useGame = create<GameStore>()(
           levels: { ...s.levels, [key]: record },
           coins: s.coins + coins,
           starBalance: s.starBalance + (firstClear ? stars : 0),
-          currentLevel: Math.min(Math.max(s.currentLevel, id + 1), 50),
+          currentLevel: Math.min(Math.max(s.currentLevel, id + 1), TOTAL_LEVELS),
         });
         return { firstClear, coins };
       },
@@ -234,6 +247,9 @@ export const useGame = create<GameStore>()(
       addCoins: (amount) =>
         set({ coins: Math.max(0, get().coins + amount) }),
 
+      setPlayerName: (name) =>
+        set({ playerName: name ? name.trim().slice(0, 24) || null : null }),
+
       canSpinToday: () => get().lastWheelDate !== todayKey(),
 
       registerSpin: () => {
@@ -258,6 +274,7 @@ export const useGame = create<GameStore>()(
         decor: s.decor,
         currentLevel: s.currentLevel,
         lastWheelDate: s.lastWheelDate,
+        playerName: s.playerName,
       }),
     },
   ),

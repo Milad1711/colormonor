@@ -171,7 +171,7 @@ export function LuckyWheel({ compact = false }: { compact?: boolean }) {
   const labels = useMemo(() => SEGMENTS.map((_, i) => segLabelPos(i)), []);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="relative flex flex-col items-center">
       {/* coins balance */}
       <div className="mb-1 flex items-center gap-1.5 self-center rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-sm font-black text-amber-800 shadow-sm">
         <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
@@ -320,11 +320,12 @@ export function LuckyWheel({ compact = false }: { compact?: boolean }) {
         <p className="mt-2 text-[11px] font-bold text-stone-500">{t("lucky_wheel_sub")}</p>
       </div>
 
-      {/* prize overlay */}
+      {/* prize overlay — scoped to the wheel block only, never covers the
+          modal's X button (that was the "close button not precise" bug) */}
       {prize !== null && (
         <>
           <Confetti count={36} />
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[28px] bg-stone-900/40 backdrop-blur-[2px]" onClick={() => setPrize(null)}>
+          <div className="absolute -inset-2 z-20 flex items-center justify-center rounded-[28px] bg-stone-900/40 backdrop-blur-[2px]" onClick={() => setPrize(null)}>
             <div className="modal-pop w-72 rounded-[26px] border-4 border-white/80 bg-gradient-to-b from-[#FFFBEF] to-[#FFF2D9] p-5 text-center shadow-[0_24px_60px_rgba(124,58,12,0.4)]">
               <div className="coin-pop mx-auto flex size-20 items-center justify-center rounded-full border-4 border-white/70 bg-gradient-to-b from-amber-300 to-orange-500 shadow-[0_10px_24px_rgba(234,88,12,0.45)]">
                 <svg viewBox="0 0 24 24" className="size-11" aria-hidden>

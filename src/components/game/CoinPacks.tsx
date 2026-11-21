@@ -1,8 +1,21 @@
 "use client";
 
 /**
- * CoinPacks — three golden coin bundles (small / medium / golden).
- * Claiming instantly tops up the wallet (free demo economy, no payment),
+ * CoinPacks — three golden coin bundles (small / medium / golden) with
+ * real price points in Toman (Cafe-Bazaar-style tiers: 57k / 129k / 271k).
+ *
+ * Coin amounts are tuned to the game economy (decor.ts):
+ *  - hint costs 20, room bonus pays 100
+ *  - furnishing one room with base models ≈ 410–620 coins
+ *  - furnishing the ENTIRE manor with the most premium models ≈ 6,805 coins
+ * So the ladder reads naturally:
+ *  - Small  57,000 T  → 1,200 coins ≈ one full room + a handful of hints
+ *  - Medium 129,000 T → 2,900 coins ≈ several rooms (+20% value)
+ *  - Golden 271,000 T → 6,800 coins ≈ the whole manor in luxury (+21% value)
+ * Price-per-coin falls monotonically (47.5 → 44.5 → 39.9), so bigger packs
+ * are always the better deal — the golden pack carries the "best value" tag.
+ *
+ * Claiming instantly tops up the wallet (demo checkout, no payment gateway),
  * with a chest flourish, confetti on the golden pack and a coin fly pop.
  */
 
@@ -17,14 +30,17 @@ import { cn } from "@/lib/utils";
 interface PackDef {
   id: "small" | "medium" | "golden";
   amount: number;
+  /** price in Toman */
+  price: number;
   nameKey: string;
+  descKey: string;
   skin: "wood" | "silver" | "gold";
 }
 
 const PACKS: PackDef[] = [
-  { id: "small", amount: 300, nameKey: "pack_small", skin: "wood" },
-  { id: "medium", amount: 900, nameKey: "pack_medium", skin: "silver" },
-  { id: "golden", amount: 2500, nameKey: "pack_golden", skin: "gold" },
+  { id: "small", amount: 1200, price: 57_000, nameKey: "pack_small", descKey: "pack_small_sub", skin: "wood" },
+  { id: "medium", amount: 2900, price: 129_000, nameKey: "pack_medium", descKey: "pack_medium_sub", skin: "silver" },
+  { id: "golden", amount: 6800, price: 271_000, nameKey: "pack_golden", descKey: "pack_golden_sub", skin: "gold" },
 ];
 
 function ChestArt({ skin, className }: { skin: PackDef["skin"]; className?: string }) {
@@ -66,7 +82,7 @@ function ChestArt({ skin, className }: { skin: PackDef["skin"]; className?: stri
   );
 }
 
-function PackCard({ pack }: { pack: PackDef }) {
+function PackCard({ pack, index }: { pack: PackDef; index: number }) {
   const { t, n } = useT();
   const addCoins = useGame((s) => s.addCoins);
   const [burst, setBurst] = useState(false);
@@ -102,21 +118,27 @@ function PackCard({ pack }: { pack: PackDef }) {
           +{n(pack.amount)}{" "}
           <span className="text-[11px] font-bold text-stone-500">{t("pack_coins_word")}</span>
         </p>
-        <p className="text-[10px] font-bold text-stone-400">{t("pack_bonus")}</p>
+        <p className="text-[10px] font-bold leading-4 text-stone-400">{t(pack.descKey)}</p>
       </div>
-      <button
-        type="button"
-        onClick={claim}
-        className={cn(
-          "btn-shine min-h-10 shrink-0 rounded-2xl px-3 text-sm font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.22)] transition-all active:translate-y-[3px] active:shadow-none",
-          golden
-            ? "bg-gradient-to-b from-amber-400 via-orange-400 to-orange-500"
-            : "bg-gradient-to-b from-emerald-400 to-teal-500",
-        )}
-      >
-        {t("pack_claim")}
-      </button>
+      <div className="flex shrink-0 flex-col items-stretch gap-1">
+        <button
+          type="button"
+          onClick={claim}
+          className={cn(
+            "btn-shine min-h-10 rounded-2xl px-3 py-1 text-sm font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.22)] transition-all active:translate-y-[3px] active:shadow-none",
+            golden
+              ? "bg-gradient-to-b from-amber-400 via-orange-400 to-orange-500"
+              : "bg-gradient-to-b from-emerald-400 to-teal-500",
+          )}
+        >
+          {t("pack_buy")}
+        </button>
+        <span className="rounded-xl bg-stone-100 px-2 py-0.5 text-center text-[10px] font-black text-stone-500 tabular-nums">
+          {n(pack.price)} {t("toman")}
+        </span>
+      </div>
       {burst && <Confetti count={golden ? 30 : 14} />}
+      <span className="hidden">{index}</span>
     </div>
   );
 }
@@ -126,9 +148,10 @@ export function CoinPacks() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-center text-xs font-bold text-stone-500">{t("coin_packs_sub")}</p>
-      {PACKS.map((p) => (
-        <PackCard key={p.id} pack={p} />
+      {PACKS.map((p, i) => (
+        <PackCard key={p.id} pack={p} index={i} />
       ))}
+      <p className="text-center text-[10px] font-bold leading-4 text-stone-400">{t("pack_demo_note")}</p>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useGame } from "@/game/store";
-import { getLevel } from "@/game/levels";
+import { getLevel, TOTAL_LEVELS } from "@/game/levels";
 import {
   applyMove,
   isSolved,
@@ -29,6 +29,7 @@ import {
   useT,
 } from "./UiBits";
 import { toast } from "./toast";
+import { syncNow } from "@/game/net";
 
 export function PuzzleScreen() {
   const { t, n, lang } = useT();
@@ -84,6 +85,8 @@ export function PuzzleScreen() {
       setResult({ stars, coins: res.coins, firstClear: res.firstClear });
       setWon(true);
       sfx.win();
+      // report progress to the leaderboard (fire-and-forget, offline safe)
+      syncNow(true);
     },
     [data.par, finishLevel, levelId],
   );
@@ -207,7 +210,7 @@ export function PuzzleScreen() {
       </header>
 
       {/* board (WebGL 3D, with DOM fallback when WebGL is unavailable) */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-6 px-3 py-4">
+      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-3">
         {use3D ? (
           <Tubes3D
             ref={boardRef}
@@ -217,7 +220,7 @@ export function PuzzleScreen() {
             justCompleted={justCompleted}
             shakeIdx={shakeIdx}
             onTap={handleTap}
-            className="h-[46vh] max-h-[420px] min-h-[240px] w-full max-w-lg"
+            className="h-[56vh] max-h-[660px] min-h-[300px] w-full max-w-xl"
           />
         ) : (
           <TubeBoardDOM
@@ -332,7 +335,7 @@ export function PuzzleScreen() {
             </div>
           )}
           <div className="mt-5 grid grid-cols-1 gap-2.5">
-            {levelId < 50 ? (
+            {levelId < TOTAL_LEVELS ? (
               <GameButton className="w-full text-lg" onClick={() => playLevel(levelId + 1)}>
                 {t("next_level")} →
               </GameButton>

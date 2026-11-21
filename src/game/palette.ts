@@ -1,4 +1,9 @@
-/** Cheerful liquid palette (game content). Index 0..7 used by level data. */
+/** Cheerful liquid palette (game content). Index 0..7 used by level data.
+ *
+ * Tuned as vivid "candy jelly" tones: saturated base, bright top light and a
+ * deep shade so the banded toon shading reads clearly in 3D while every hue
+ * stays instantly distinguishable from its neighbours at a glance.
+ */
 export interface LiquidColor {
   base: string;
   light: string;
@@ -6,14 +11,14 @@ export interface LiquidColor {
 }
 
 export const LIQUIDS: LiquidColor[] = [
-  { base: "#E94F4F", light: "#FF8A80", dark: "#B23131" }, // red
-  { base: "#F59E42", light: "#FFC98A", dark: "#C46F1F" }, // orange
-  { base: "#F5D23F", light: "#FFEB9C", dark: "#C9A618" }, // yellow
-  { base: "#55B85B", light: "#9CE0A0", dark: "#358741" }, // green
-  { base: "#3EC5B0", light: "#8FE8DB", dark: "#1F8F7E" }, // teal
-  { base: "#5A8FDE", light: "#9CC4F5", dark: "#3563A8" }, // blue
-  { base: "#A267D8", light: "#CBAFF0", dark: "#7542A8" }, // purple
-  { base: "#F06EA9", light: "#FFAED2", dark: "#C2447E" }, // pink
+  { base: "#F64848", light: "#FFA3A3", dark: "#A81E2C" }, // red — raspberry
+  { base: "#FF8E2B", light: "#FFC48F", dark: "#B54F10" }, // orange — tangerine
+  { base: "#FFC41F", light: "#FFEDA3", dark: "#A87800" }, // yellow — honey
+  { base: "#43C04C", light: "#A9EBA3", dark: "#187A28" }, // green — apple
+  { base: "#17C4B1", light: "#93F0E3", dark: "#0A7C6F" }, // teal — mint
+  { base: "#3E82F7", light: "#A9C9FF", dark: "#1C4FB0" }, // blue — blueberry
+  { base: "#9B57E9", light: "#D0B1F5", dark: "#5E2AA0" }, // purple — grape
+  { base: "#F75FA9", light: "#FFB9DB", dark: "#B02C70" }, // pink — bubblegum
 ];
 
 export function liquid(i: number): LiquidColor {

@@ -6,7 +6,6 @@
  * or the shop header.
  */
 
-import { useState } from "react";
 import { useGame } from "@/game/store";
 import { sfx } from "@/game/audio";
 import { Modal } from "./Modal";
@@ -15,15 +14,14 @@ import { LuckyWheel } from "./LuckyWheel";
 import { CoinPacks } from "./CoinPacks";
 import { cn } from "@/lib/utils";
 
-type Tab = "wheel" | "packs";
-
 export function CoinStoreModal() {
   const { t } = useT();
   const open = useGame((s) => s.coinStoreOpen);
   const close = useGame((s) => s.closeCoinStore);
-  const [tab, setTab] = useState<Tab>("wheel");
+  const tab = useGame((s) => s.coinStoreTab);
+  const setTab = useGame((s) => s.setCoinStoreTab);
 
-  const switchTab = (next: Tab) => {
+  const switchTab = (next: typeof tab) => {
     sfx.tap();
     setTab(next);
   };

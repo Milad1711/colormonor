@@ -145,20 +145,20 @@ export const TubeBoardDOM = forwardRef<TubeBoardApi, BoardDOMProps>(function Tub
       const s = srcEl.getBoundingClientRect();
       const d = dstEl.getBoundingClientRect();
       const dx = d.left + d.width / 2 - (s.left + s.width / 2);
-      const dy = Math.min(d.top - s.top, 0) - 74;
       const dir = dx >= 0 ? 1 : -1;
-      const pourDur = count * UNIT_MS + 110;
-      const total = FLY_OUT + pourDur + FLY_BACK;
-      const o1 = FLY_OUT / total;
-      const o2 = (FLY_OUT + pourDur) / total;
+      // in-place pour: tip towards the destination, drain, straighten back
+      const TILT_IN = 150;
+      const TILT_OUT = 150;
+      const pourDur = count * UNIT_MS + 90;
+      const total = TILT_IN + pourDur + TILT_OUT;
+      const o1 = TILT_IN / total;
+      const o2 = (TILT_IN + pourDur) / total;
       const anim = srcEl.animate(
         [
-          { transform: "translate(0,0) rotate(0deg)", offset: 0 },
-          { transform: `translate(${dx * 0.45}px, ${dy - 16}px) rotate(0deg)`, offset: o1 * 0.7 },
-          { transform: `translate(${dx}px, ${dy}px) rotate(${dir * 58}deg)`, offset: o1 },
-          { transform: `translate(${dx}px, ${dy}px) rotate(${dir * 58}deg)`, offset: o2 },
-          { transform: `translate(${dx * 0.45}px, ${dy - 16}px) rotate(0deg)`, offset: o2 + (1 - o2) * 0.4 },
-          { transform: "translate(0,0) rotate(0deg)", offset: 1 },
+          { transform: "rotate(0deg)", offset: 0 },
+          { transform: `rotate(${dir * 42}deg)`, offset: o1 },
+          { transform: `rotate(${dir * 42}deg)`, offset: o2 },
+          { transform: "rotate(0deg)", offset: 1 },
         ],
         { duration: total, easing: "ease-in-out" },
       );
@@ -169,7 +169,7 @@ export const TubeBoardDOM = forwardRef<TubeBoardApi, BoardDOMProps>(function Tub
         if (el) {
           el.animate(
             [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
-            { duration: UNIT_MS, delay: FLY_OUT + gi * UNIT_MS, fill: "forwards", easing: "ease-in" },
+            { duration: UNIT_MS, delay: TILT_IN + gi * UNIT_MS, fill: "forwards", easing: "ease-in" },
           );
         }
       }
