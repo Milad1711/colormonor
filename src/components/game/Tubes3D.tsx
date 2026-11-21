@@ -10,10 +10,14 @@
  *                  every tube is fully visible and tappable — nothing is
  *                  ever hidden behind another tube.
  *
- * The pour is an in-place gesture: the source tube lifts, tips towards the
- * destination, a color stream arcs into its mouth, units drain / fill in
- * exact stack slots, then the tube settles back. Liquids always stack from
- * the tube floor with zero drift; emptied slivers are hidden instantly.
+ * The pour is a full "pitcher pour": the source tube lifts above the board,
+ * glides over the destination while swinging up, then hangs tilted (leaning
+ * slightly towards the camera, in front of the board plane) with its mouth
+ * landed exactly above the destination mouth. A solid vertical stream falls
+ * into the destination while units drain / fill in exact stack slots, then
+ * the tube arcs back home. Liquids always stack from the tube floor with
+ * zero drift; emptied slivers are hidden instantly. The hanging tube floats
+ * in front of the board plane, so it can never sweep through other tubes.
  *
  * Exposes the same imperative `pour()` API as the DOM fallback board.
  */
@@ -29,7 +33,7 @@ import {
   hasWebGL,
   makeToonGradient,
 } from "@/game/three-kit";
-import { FLY_BACK, FLY_OUT, UNIT_MS, type TubeBoardApi } from "@/game/board-anim";
+import { UNIT_MS, type TubeBoardApi } from "@/game/board-anim";
 
 /* ----------------------------- world metrics ----------------------------- */
 const UNIT_H = 0.52;
@@ -46,10 +50,27 @@ const RISE = TUBE_H + SHELF_GAP;
 const TWO_ROWS_FROM = 6;
 const UP = new THREE.Vector3(0, 1, 0);
 
-const TILT = 1.85; // rad, mouth swings towards destination
-const POUR_LIFT = 0.5; // how high the source tube rises before tipping
 const SEL_LIFT = 0.34; // selected tube hover
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
+
+/* ------------------------- pour choreography ------------------------- */
+/** gap between the hanging mouth and the destination rim */
+const MOUTH_GAP = 0.22;
+/** final hang tilt (rad ≈ 130°) — mouth points down into the destination */
+const TILT_POUR = 2.27;
+/** transit tilt (rad ≈ 95°) — mouth leads sideways while gliding over */
+const TILT_FLY = 1.66;
+const LIFT_MS = 180;
+const TRANSIT_MS = 250;
+const TIPIN_MS = 175;
+const RETURN_MS = 340;
+/** z blended into the lean direction — the camera sits at +z, so a negative
+ * z puts the hanging tube body in FRONT of the board plane (never clipping
+ * through the other tubes while it descends). */
+const CAM_LEAN = -0.62;
+/** ?slowmo → 3× slower pours, for visual inspection */
+const SLOW = typeof window !== "undefined" && window.location.search.includes("slowmo");
+const D = (ms: number) => (SLOW ? ms * 3 : ms);
 
 interface TubeNode {
   group: THREE.Group;
@@ -73,34 +94,11 @@ interface Burst {
   life: number;
 }
 
-interface Droplets {
-  points: THREE.Points;
-  mat: THREE.PointsMaterial;
-  src: THREE.Vector3;
-  dst: THREE.Vector3;
-  born: number;
-  dur: number;
-  n: number;
-}
-
 interface DustMotes {
   points: THREE.Points;
   mat: THREE.PointsMaterial;
   vels: Float32Array;
   bounds: { x: number; y: number; z: number };
-}
-
-function bezierArc(a: THREE.Vector3, b: THREE.Vector3, apex: number, t: number, out: THREE.Vector3): THREE.Vector3 {
-  const midX = (a.x + b.x) / 2;
-  const midY = Math.max(a.y, b.y) + apex;
-  const midZ = (a.z + b.z) / 2;
-  const u = 1 - t;
-  out.set(
-    u * u * a.x + 2 * u * t * midX + t * t * b.x,
-    u * u * a.y + 2 * u * t * midY + t * t * b.y,
-    u * u * a.z + 2 * u * t * midZ + t * t * b.z,
-  );
-  return out;
 }
 
 interface Tubes3DProps {
@@ -128,7 +126,6 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
   const quietRef = useRef<Set<number>>(new Set());
   const pouringRef = useRef<number | null>(null);
   const burstsRef = useRef<Burst[]>([]);
-  const dropsRef = useRef<Droplets[]>([]);
   const dustRef = useRef<DustMotes | null>(null);
   const growRef = useRef<{ mesh: THREE.Mesh; p: number; k: number }[]>([]);
   const shakeRef = useRef<{ idx: number; until: number } | null>(null);
@@ -287,6 +284,8 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
     let fitLook = new THREE.Vector3(0, 1.2, 0);
     let fitCamYOff = 2.2;
     let fitDist = 9;
+    /** world Y of the top edge of the viewport at the board plane (approx) */
+    let fitTopY = 8;
 
     function refitCamera() {
       const n = Math.max(nodes.length, 1);
@@ -312,6 +311,7 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
       camera.position.set(0, fitLook.y + fitCamYOff, Math.sqrt(Math.max(fitDist * fitDist - fitCamYOff * fitCamYOff, 1)));
       camera.lookAt(fitLook);
       lookTargetV.copy(fitLook);
+      fitTopY = fitLook.y + Math.tan(vFov / 2) * Math.sqrt(Math.max(fitDist * fitDist - fitCamYOff * fitCamYOff, 1));
     }
 
     function buildBoard(state: number[][]) {
@@ -442,6 +442,34 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
       const points = new THREE.Points(geo, mat);
       scene.add(points);
       burstsRef.current.push({ points, mat, vels, born: performance.now(), life: 950 });
+    }
+
+    /** small liquid-coloured splash where the stream hits the surface */
+    function splash(origin: THREE.Vector3, colorIdx: number) {
+      const n = 12;
+      const positions = new Float32Array(n * 3);
+      const vels = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        positions[i * 3] = origin.x;
+        positions[i * 3 + 1] = origin.y;
+        positions[i * 3 + 2] = origin.z;
+        const a = (i / n) * Math.PI * 2;
+        vels[i * 3] = Math.cos(a) * (0.35 + Math.random() * 0.55);
+        vels[i * 3 + 1] = 0.8 + Math.random() * 1.0;
+        vels[i * 3 + 2] = Math.sin(a) * (0.3 + Math.random() * 0.45);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: new THREE.Color(LIQUIDS[colorIdx % LIQUIDS.length].light),
+        size: 0.085,
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+      });
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+      burstsRef.current.push({ points, mat, vels, born: performance.now(), life: 620 });
     }
 
     apiRef.current = { buildBoard, syncTubes, burst, refit: refitCamera };
@@ -586,29 +614,6 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
         return true;
       });
 
-      // droplet arcs
-      dropsRef.current = dropsRef.current.filter((d) => {
-        const age = now - d.born;
-        if (age > d.dur) {
-          d.points.removeFromParent();
-          d.points.geometry.dispose();
-          d.mat.dispose();
-          return false;
-        }
-        const pos = d.points.geometry.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < d.n; i++) {
-          const local = clamp01((age - i * (d.dur / d.n) * 0.5) / (d.dur * 0.55));
-          if (local <= 0 || local >= 1) {
-            pos.setXYZ(i, d.src.x, -10, d.src.z);
-          } else {
-            bezierArc(d.src, d.dst, 0.5, local, V3);
-            pos.setXYZ(i, V3.x, V3.y, V3.z);
-          }
-        }
-        pos.needsUpdate = true;
-        return true;
-      });
-
       // ambient dust drift (wraps around the floating board)
       if (dustRef.current) {
         const d = dustRef.current;
@@ -649,109 +654,207 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
       });
 
     pourImplRef.current = async (from, to, count, color) => {
-        const nodeF = nodes[from];
-        const nodeT = nodes[to];
-        if (!nodeF || !nodeT) return;
-        pouringRef.current = from;
-        const basePos = nodeF.group.position.clone();
-        const mouthRestY = nodeF.baseY + TUBE_H;
+      const nodeF = nodes[from];
+      const nodeT = nodes[to];
+      if (!nodeF || !nodeT) return;
+      pouringRef.current = from;
 
-        /* --- phase A: rise straight up (no flying across the board) --- */
-        await tweenMs(FLY_OUT, (p) => {
-          const e = 1 - Math.pow(1 - p, 3);
-          nodeF.group.position.y = basePos.y + POUR_LIFT * e;
-        });
+      const home = new THREE.Vector3(nodeF.baseX, nodeF.baseY, nodeF.baseZ);
+      const mouth = new THREE.Vector3(nodeT.baseX, nodeT.baseY + TUBE_H + MOUTH_GAP, nodeT.baseZ);
+      const startY = nodeF.group.position.y;
+      const startX = nodeF.group.position.x;
 
-        /* --- phase B: tip towards the destination + transfer --- */
-        let dx = nodeT.baseX - nodeF.baseX;
-        if (Math.abs(dx) < 0.12) dx = dx >= 0 ? 0.35 : -0.35; // vertical pour → tip sideways
-        const dir = new THREE.Vector3(dx, 0, nodeT.baseZ - nodeF.baseZ);
-        const axis = new THREE.Vector3().crossVectors(UP, dir).normalize();
-        const pourDur = count * UNIT_MS + 110;
-        const srcLen = tubesRef.current[from]?.length ?? nodeF.units.length;
-        const dstLen = tubesRef.current[to]?.length ?? 0;
+      /* lean direction: mostly towards the destination's side, blended towards
+       * the camera so the hanging tube floats IN FRONT of the board plane and
+       * can never sweep through the other tubes while it descends. */
+      const dx = nodeT.baseX - nodeF.baseX;
+      let sideX: number;
+      if (Math.abs(dx) > 0.12) sideX = dx > 0 ? 1 : -1;
+      else sideX = nodeT.baseX >= 0 ? 1 : -1; // vertical pour → lean towards board centre
+      let lean = new THREE.Vector3(sideX, 0, CAM_LEAN).normalize();
+      /* adaptive final tilt: high destinations (bottom row pouring up into the
+       * top row) use a shallower hang so the tube never pokes past the top of
+       * the viewport. Low destinations keep the full ~130° hang. */
+      const tiltMax = Math.acos(THREE.MathUtils.clamp((mouth.y - fitTopY + 0.5) / TUBE_H, -1, 1));
+      const tiltFinal = THREE.MathUtils.clamp(tiltMax, TILT_FLY, TILT_POUR);
+      const sinF = Math.sin(tiltFinal);
+      const hang = new THREE.Vector3(
+        mouth.x - TUBE_H * sinF * lean.x,
+        mouth.y - TUBE_H * Math.cos(tiltFinal),
+        mouth.z - TUBE_H * sinF * lean.z,
+      );
+      /* keep the hanging base inside the board width — flip the lean if it sticks out */
+      const { rows } = layoutFor(Math.max(nodes.length, 1));
+      const halfW = ((Math.max(...rows) - 1) / 2) * SPACING + TUBE_R + 0.55;
+      if (Math.abs(hang.x) > halfW) {
+        lean = new THREE.Vector3(-sideX, 0, CAM_LEAN).normalize();
+        hang.set(mouth.x - TUBE_H * sinF * lean.x, hang.y, mouth.z - TUBE_H * sinF * lean.z);
+      }
+      const maxTop = Math.max(...nodes.map((nd) => nd.baseY)) + TUBE_H;
+      let flyY = maxTop + 0.62;
+      if (fitTopY - 0.5 < flyY) flyY = Math.max(maxTop + 0.34, fitTopY - 0.5);
 
-        // ghosts in the destination — grow from its exact stack slots
-        const ghosts: THREE.Mesh[] = [];
-        for (let k = 0; k < count; k++) {
-          const m = new THREE.Mesh(unitGeo, liqMats[color % liqMats.length]);
-          m.position.y = bottomY(dstLen + k);
-          m.scale.y = 0.01;
-          nodeT.liquid.add(m);
-          ghosts.push(m);
+      const tiltAxis = new THREE.Vector3().crossVectors(UP, lean).normalize();
+      const srcLen = tubesRef.current[from]?.length ?? nodeF.units.length;
+      const dstLen = tubesRef.current[to]?.length ?? 0;
+
+      /* liquid staying behind pools towards the mouth while the tube hangs */
+      const remaining = srcLen - count;
+      const slideMax = remaining > 0 ? Math.max(0, TUBE_H - 0.82 - bottomY(remaining - 1)) : 0;
+
+      /* ghosts grow in the destination at its exact stack slots */
+      const ghosts: THREE.Mesh[] = [];
+      for (let k = 0; k < count; k++) {
+        const m = new THREE.Mesh(unitGeo, liqMats[color % liqMats.length]);
+        m.position.y = bottomY(dstLen + k);
+        m.scale.y = 0.01;
+        m.visible = false;
+        nodeT.liquid.add(m);
+        ghosts.push(m);
+      }
+
+      /* solid vertical stream from the hanging mouth into the destination */
+      const streamGeo = new THREE.CylinderGeometry(0.07, 0.105, 1, 10, 1, true);
+      const streamMat = new THREE.MeshPhongMaterial({
+        color: LIQUIDS[color % LIQUIDS.length].base,
+        transparent: true,
+        opacity: 0,
+        shininess: 100,
+        specular: 0xffffff,
+        depthWrite: false,
+      });
+      const stream = new THREE.Mesh(streamGeo, streamMat);
+      stream.visible = false;
+      scene.add(stream);
+
+      const surfaceY = (len: number) => (len === 0 ? nodeT.baseY + 0.14 : nodeT.baseY + bottomY(len - 1) + HALF_H + 0.05);
+
+      /* --- 1+2. rise above the board and glide over, swinging up as it
+       * climbs so the glass never pokes past the viewport ceiling and the
+       * body clears the neighbouring tubes while still low --- */
+      const RISE_MS = LIFT_MS + TRANSIT_MS;
+      const swingSpan = Math.max(0.6, flyY - 1.9);
+      await tweenMs(D(RISE_MS), (p) => {
+        const sm = p * p * (3 - 2 * p);
+        const xg = Math.pow(sm, 1.5); // horizontal motion lags the rise
+        const y = startY + (flyY - startY) * (1 - Math.pow(1 - p, 2));
+        nodeF.group.position.set(
+          startX + (hang.x - startX) * xg,
+          y + Math.sin(Math.PI * sm) * 0.1,
+          home.z + (hang.z - home.z) * xg,
+        );
+        const phi = Math.min(TILT_FLY, TILT_FLY * clamp01((y - 1.4) / swingSpan));
+        nodeF.group.quaternion.setFromAxisAngle(tiltAxis, phi);
+      });
+
+      /* --- 3. swing down into the hanging pour pose --- */
+      await tweenMs(D(TIPIN_MS), (p) => {
+        const e = 1 - Math.pow(1 - p, 3);
+        nodeF.group.position.set(hang.x, flyY + (hang.y - flyY) * e, hang.z);
+        nodeF.group.quaternion.setFromAxisAngle(tiltAxis, TILT_FLY + (tiltFinal - TILT_FLY) * e);
+        // the remaining block starts pooling towards the mouth
+        const slide = slideMax * e;
+        for (let k = 0; k < remaining; k++) {
+          const m = nodeF.units[k];
+          if (m) m.position.y = bottomY(k) + slide;
         }
+      });
 
-        // color stream: from the tipped mouth to the destination mouth
-        const mouthLocal = new THREE.Vector3(0, TUBE_H, 0).applyAxisAngle(axis, TILT * 0.8);
-        const mouthSrc = mouthLocal.add(nodeF.group.position);
-        const mouthDst = new THREE.Vector3(nodeT.baseX, nodeT.baseY + TUBE_H + 0.04, nodeT.baseZ);
-        const dN = 9;
-        const dGeo = new THREE.BufferGeometry();
-        dGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(dN * 3), 3));
-        const dMat = new THREE.PointsMaterial({ color: LIQUIDS[color % LIQUIDS.length].base, size: 0.1, transparent: true, opacity: 0.95, depthWrite: false });
-        const dPoints = new THREE.Points(dGeo, dMat);
-        scene.add(dPoints);
-        dropsRef.current.push({ points: dPoints, mat: dMat, src: mouthSrc, dst: mouthDst, born: performance.now(), dur: pourDur + 60, n: dN });
+      /* --- 4. pour: stream + drain + fill --- */
+      const pourDur = count * UNIT_MS + 130;
+      const t0 = performance.now();
+      stream.visible = true;
+      splash(new THREE.Vector3(mouth.x, surfaceY(dstLen), mouth.z), color);
 
-        await tweenMs(pourDur, (_p, tMs) => {
-          // tip in during the first 45% of the pour
-          const tiltP = clamp01(tMs / (pourDur * 0.45));
-          const tiltE = tiltP * tiltP * (3 - 2 * tiltP);
-          nodeF.group.quaternion.setFromAxisAngle(axis, TILT * tiltE);
-          // liquid glides towards the mouth as the tube tips past horizontal
-          const slide = tiltE * 0.55;
-          // source units drain sequentially — the bottom edge of each unit
-          // stays glued to its stack slot, and drained slivers vanish
-          for (let k = 0; k < count; k++) {
-            const sp = clamp01((tMs - k * UNIT_MS) / 95);
-            const idx = srcLen - 1 - k;
-            const m = nodeF.units[idx];
-            if (m) {
-              const s = Math.max(0.02, 1 - sp * 0.98);
-              m.scale.y = s;
-              m.position.y = bottomY(idx) + slide - HALF_H * (1 - s);
-              m.visible = s > 0.05;
-            }
-          }
-          // the still-liquid units ride up with the tilt, keeping the stack
-          for (let k = 0; k < srcLen - count; k++) {
-            const m = nodeF.units[k];
-            if (m) {
-              m.position.y = bottomY(k) + slide;
-              m.visible = true;
-            }
-          }
-          // destination ghosts fill sequentially, growing upward from the base
-          for (let k = 0; k < count; k++) {
-            const gp = clamp01((tMs - 90 - k * UNIT_MS) / 110);
-            const s = Math.max(0.01, gp);
-            ghosts[k].scale.y = s;
-            ghosts[k].position.y = bottomY(dstLen + k) - HALF_H * (1 - s);
-          }
-        });
+      await tweenMs(D(pourDur), (_p, tMs) => {
+        const tt = (t0 + tMs) * 0.001;
+        nodeF.group.quaternion.setFromAxisAngle(tiltAxis, tiltFinal + Math.sin(tt * 21) * 0.028);
+        nodeF.group.position.set(hang.x, hang.y + Math.sin(tt * 17) * 0.02, hang.z);
+        const slide = slideMax;
+        // drain the source top-down, bottoms glued to their stack slots
+        for (let k = 0; k < count; k++) {
+          const sp = clamp01((tMs - k * UNIT_MS) / 95);
+          const idx = srcLen - 1 - k;
+          const m = nodeF.units[idx];
+          if (!m) continue;
+          const s = Math.max(0.02, 1 - sp * 0.98);
+          m.scale.y = s;
+          m.position.y = bottomY(idx) + slide - HALF_H * (1 - s);
+          m.visible = s > 0.05;
+        }
+        for (let k = 0; k < remaining; k++) {
+          const m = nodeF.units[k];
+          if (!m) continue;
+          m.position.y = bottomY(k) + slide;
+          m.visible = true;
+        }
+        // fill ghosts at the destination's exact slots, stream rides the surface
+        let fillTop = surfaceY(dstLen);
+        for (let k = 0; k < count; k++) {
+          const gp = clamp01((tMs - 60 - k * UNIT_MS) / 110);
+          const g = ghosts[k];
+          g.visible = gp > 0.01;
+          g.scale.y = Math.max(0.01, gp);
+          g.position.y = bottomY(dstLen + k) - HALF_H * (1 - gp);
+          if (gp > 0.01) fillTop = Math.max(fillTop, bottomY(dstLen + k) - HALF_H + 1.88 * HALF_H * gp);
+        }
+        const fade = Math.min(clamp01(tMs / 70), clamp01((pourDur - tMs) / 90));
+        streamMat.opacity = 0.92 * fade;
+        const mouthY = mouth.y - 0.04;
+        const h = Math.max(0.05, mouthY - fillTop);
+        const pulse = 1 + Math.sin(tt * 30) * 0.12;
+        stream.position.set(mouth.x, mouthY - h / 2, mouth.z);
+        stream.scale.set(pulse, h, pulse);
+      });
 
-        /* --- phase C: straighten + settle back onto its shelf --- */
-        await tweenMs(FLY_BACK, (p) => {
-          const e = p * p * (3 - 2 * p);
-          nodeF.group.quaternion.setFromAxisAngle(axis, TILT * (1 - e));
-          nodeF.group.position.y = THREE.MathUtils.lerp(basePos.y + POUR_LIFT, basePos.y, e);
-        });
-        nodeF.group.quaternion.identity();
-        nodeF.group.position.copy(basePos);
-        // pin every source unit back onto its exact stack slot
-        nodeF.units.forEach((m, k) => {
-          m.position.y = bottomY(k);
-          if (k < srcLen - count) {
-            m.scale.y = 1;
-            m.visible = true;
-          }
-        });
+      /* --- 5. arc back home, staying level-high then righting itself on
+       * approach so the mouth-end never pokes past the viewport ceiling --- */
+      const ctrl = new THREE.Vector3(
+        (hang.x + home.x) / 2,
+        Math.max(hang.y, flyY) + 0.4,
+        (hang.z + home.z) / 2 + 0.12,
+      );
+      await tweenMs(D(RETURN_MS), (p) => {
+        const sm = p * p * (3 - 2 * p);
+        const u = 1 - sm;
+        nodeF.group.position.set(
+          u * u * hang.x + 2 * u * sm * ctrl.x + sm * sm * home.x,
+          u * u * hang.y + 2 * u * sm * ctrl.y + sm * sm * home.y,
+          u * u * hang.z + 2 * u * sm * ctrl.z + sm * sm * home.z,
+        );
+        const level = 1 - Math.pow(sm, 1.8); // stays in pour pose while high
+        nodeF.group.quaternion.setFromAxisAngle(tiltAxis, tiltFinal * level);
+        // the pooled block glides back onto its slots as the tube levels out
+        const slide = slideMax * level;
+        for (let k = 0; k < remaining; k++) {
+          const m = nodeF.units[k];
+          if (!m) continue;
+          m.position.y = bottomY(k) + slide;
+          m.scale.y = 1;
+          m.visible = true;
+        }
+      });
 
-        ghosts.forEach((m) => m.removeFromParent());
-        pouringRef.current = null;
-        // let the state reconciliation place the real destination units quietly
-        quietRef.current.add(to);
-      };
+      /* land exactly on the shelf; drained slivers stay hidden */
+      nodeF.group.quaternion.identity();
+      nodeF.group.position.copy(home);
+      nodeF.units.forEach((m, k) => {
+        m.position.y = bottomY(k);
+        if (k < remaining) {
+          m.scale.y = 1;
+          m.visible = true;
+        } else {
+          m.visible = false;
+        }
+      });
+      ghosts.forEach((m) => m.removeFromParent());
+      stream.removeFromParent();
+      streamGeo.dispose();
+      streamMat.dispose();
+      pouringRef.current = null;
+      // let the state reconciliation place the real destination units quietly
+      quietRef.current.add(to);
+    };
 
     buildBoard(tubesRef.current);
     completeRef.current = tubesRef.current.map(isTubeComplete);
@@ -827,5 +930,3 @@ export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
 
   return <div ref={mountRef} className={className ?? "h-72 w-full"} aria-hidden />;
 });
-
-const V3 = new THREE.Vector3();

@@ -1,0 +1,832 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * Tubes3D — the water-sort puzzle rendered as a real 3D scene.
+     5→ * Glass tubes and colors FLOAT freely in the air (no table, no stands —
+     6→ * the tubes hover with a gentle bob) on clearly separated "floating shelves":
+     7→ *
+     8→ *  - 1..5 tubes  → one single horizontal row (big, side by side)
+     9→ *  - 6+ tubes    → two vertically stacked rows with a wide air gap, so
+    10→ *                  every tube is fully visible and tappable — nothing is
+    11→ *                  ever hidden behind another tube.
+    12→ *
+    13→ * The pour is an in-place gesture: the source tube lifts, tips towards the
+    14→ * destination, a color stream arcs into its mouth, units drain / fill in
+    15→ * exact stack slots, then the tube settles back. Liquids always stack from
+    16→ * the tube floor with zero drift; emptied slivers are hidden instantly.
+    17→ *
+    18→ * Exposes the same imperative `pour()` API as the DOM fallback board.
+    19→ */
+    20→
+    21→import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+    22→import * as THREE from "three";
+    23→import { LIQUIDS } from "@/game/palette";
+    24→import { isTubeComplete } from "@/game/solver";
+    25→import {
+    26→  createLightRig,
+    27→  createRenderer,
+    28→  disposeObject,
+    29→  hasWebGL,
+    30→  makeToonGradient,
+    31→} from "@/game/three-kit";
+    32→import { FLY_BACK, FLY_OUT, UNIT_MS, type TubeBoardApi } from "@/game/board-anim";
+    33→
+    34→/* ----------------------------- world metrics ----------------------------- */
+    35→const UNIT_H = 0.52;
+    36→/** half height of a liquid unit cylinder (unit geo height = UNIT_H * 0.88) */
+    37→const HALF_H = UNIT_H * 0.44;
+    38→const TUBE_R = 0.42;
+    39→const TUBE_H = UNIT_H * 4 + 0.45;
+    40→const SPACING = 1.14;
+    41→/** air gap between the two floating shelf rows */
+    42→const SHELF_GAP = 0.52;
+    43→/** y raise of the upper shelf row */
+    44→const RISE = TUBE_H + SHELF_GAP;
+    45→/** two rows only from this tube count up (below → one big row) */
+    46→const TWO_ROWS_FROM = 6;
+    47→const UP = new THREE.Vector3(0, 1, 0);
+    48→
+    49→const TILT = 1.85; // rad, mouth swings towards destination
+    50→const POUR_LIFT = 0.5; // how high the source tube rises before tipping
+    51→const SEL_LIFT = 0.34; // selected tube hover
+    52→const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
+    53→
+    54→interface TubeNode {
+    55→  group: THREE.Group;
+    56→  liquid: THREE.Group;
+    57→  ring: THREE.Mesh;
+    58→  ringMat: THREE.MeshBasicMaterial;
+    59→  hit: THREE.Mesh;
+    60→  baseX: number;
+    61→  baseY: number;
+    62→  baseZ: number;
+    63→  /** idle-bob phase offset so tubes don't float in lockstep */
+    64→  floatPhase: number;
+    65→  units: THREE.Mesh[];
+    66→}
+    67→
+    68→interface Burst {
+    69→  points: THREE.Points;
+    70→  mat: THREE.PointsMaterial;
+    71→  vels: Float32Array;
+    72→  born: number;
+    73→  life: number;
+    74→}
+    75→
+    76→interface Droplets {
+    77→  points: THREE.Points;
+    78→  mat: THREE.PointsMaterial;
+    79→  src: THREE.Vector3;
+    80→  dst: THREE.Vector3;
+    81→  born: number;
+    82→  dur: number;
+    83→  n: number;
+    84→}
+    85→
+    86→interface DustMotes {
+    87→  points: THREE.Points;
+    88→  mat: THREE.PointsMaterial;
+    89→  vels: Float32Array;
+    90→  bounds: { x: number; y: number; z: number };
+    91→}
+    92→
+    93→function bezierArc(a: THREE.Vector3, b: THREE.Vector3, apex: number, t: number, out: THREE.Vector3): THREE.Vector3 {
+    94→  const midX = (a.x + b.x) / 2;
+    95→  const midY = Math.max(a.y, b.y) + apex;
+    96→  const midZ = (a.z + b.z) / 2;
+    97→  const u = 1 - t;
+    98→  out.set(
+    99→    u * u * a.x + 2 * u * t * midX + t * t * b.x,
+   100→    u * u * a.y + 2 * u * t * midY + t * t * b.y,
+   101→    u * u * a.z + 2 * u * t * midZ + t * t * b.z,
+   102→  );
+   103→  return out;
+   104→}
+   105→
+   106→interface Tubes3DProps {
+   107→  tubes: number[][];
+   108→  selected: number | null;
+   109→  hinted: { from: number; to: number } | null;
+   110→  justCompleted: number[];
+   111→  shakeIdx: number | null;
+   112→  onTap: (index: number) => void;
+   113→  className?: string;
+   114→}
+   115→
+   116→export const Tubes3D = forwardRef<TubeBoardApi, Tubes3DProps>(function Tubes3D(
+   117→  { tubes, selected, hinted, justCompleted, shakeIdx, onTap, className },
+   118→  ref,
+   119→) {
+   120→  const mountRef = useRef<HTMLDivElement>(null);
+   121→  const propsRef = useRef({ tubes, selected, hinted, shakeIdx, onTap });
+   122→
+   123→  useEffect(() => {
+   124→    propsRef.current = { tubes, selected, hinted, shakeIdx, onTap };
+   125→  });
+   126→
+   127→  const nodesRef = useRef<TubeNode[]>([]);
+   128→  const quietRef = useRef<Set<number>>(new Set());
+   129→  const pouringRef = useRef<number | null>(null);
+   130→  const burstsRef = useRef<Burst[]>([]);
+   131→  const dropsRef = useRef<Droplets[]>([]);
+   132→  const dustRef = useRef<DustMotes | null>(null);
+   133→  const growRef = useRef<{ mesh: THREE.Mesh; p: number; k: number }[]>([]);
+   134→  const shakeRef = useRef<{ idx: number; until: number } | null>(null);
+   135→  const completeRef = useRef<boolean[]>([]);
+   136→  const prevCompletedRef = useRef<number[]>([]);
+   137→  const pourImplRef = useRef<TubeBoardApi["pour"] | null>(null);
+   138→
+   139→  /* imperative handle delegated to the scene implementation */
+   140→  useImperativeHandle(
+   141→    ref,
+   142→    () => ({
+   143→      pour: (from: number, to: number, count: number, color: number) =>
+   144→        pourImplRef.current ? pourImplRef.current(from, to, count, color) : Promise.resolve(),
+   145→    }),
+   146→    [],
+   147→  );
+   148→
+   149→  /* keep a stable copy of latest tubes for the imperative pour */
+   150→  const tubesRef = useRef(tubes);
+   151→  useEffect(() => {
+   152→    tubesRef.current = tubes;
+   153→  }, [tubes]);
+   154→
+   155→  /* ------------------------------ scene setup ------------------------------ */
+   156→  const apiRef = useRef<{
+   157→    buildBoard: (state: number[][]) => void;
+   158→    syncTubes: (state: number[][]) => void;
+   159→    burst: (idx: number) => void;
+   160→    refit: () => void;
+   161→  } | null>(null);
+   162→
+   163→  useEffect(() => {
+   164→    const mount = mountRef.current;
+   165→    if (!mount || !hasWebGL()) return;
+   166→
+   167→    const canvas = document.createElement("canvas");
+   168→    canvas.className = "block h-full w-full touch-none";
+   169→    mount.appendChild(canvas);
+   170→    const el = mount;
+   171→
+   172→    let renderer: THREE.WebGLRenderer;
+   173→    try {
+   174→      renderer = createRenderer(canvas);
+   175→    } catch {
+   176→      canvas.remove();
+   177→      return;
+   178→    }
+   179→
+   180→    const scene = new THREE.Scene();
+   181→    const gradient = makeToonGradient();
+   182→
+   183→    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 80);
+   184→    const lookTargetV = new THREE.Vector3(0, 1.2, 0);
+   185→
+   186→    const { hemi, key, fill } = createLightRig(7);
+   187→    scene.add(hemi, key, fill);
+   188→
+   189→    const nodes: TubeNode[] = [];
+   190→    nodesRef.current = nodes;
+   191→    const disposables: THREE.Object3D[] = [];
+   192→    const track = <T extends THREE.Object3D>(o: T): T => {
+   193→      disposables.push(o);
+   194→      return o;
+   195→    };
+   196→
+   197→    /* shared resources */
+   198→    const unitGeo = new THREE.CylinderGeometry(TUBE_R - 0.06, TUBE_R - 0.06, UNIT_H * 0.88, 22);
+   199→    /** glossy "liquid surface" cap sitting on top of every unit band */
+   200→    const capGeo = new THREE.CylinderGeometry(TUBE_R - 0.03, TUBE_R - 0.05, 0.085, 20);
+   201→    const glassGeo = new THREE.CylinderGeometry(TUBE_R, TUBE_R * 0.9, TUBE_H, 26, 1, false);
+   202→    const ringGeo = new THREE.TorusGeometry(TUBE_R + 0.17, 0.035, 8, 30);
+   203→    const hitGeo = new THREE.CylinderGeometry(TUBE_R + 0.16, TUBE_R + 0.16, TUBE_H + 0.35, 10);
+   204→    const liqMats = LIQUIDS.map(
+   205→      (c) => new THREE.MeshToonMaterial({ color: new THREE.Color(c.base), gradientMap: gradient, emissive: new THREE.Color(c.dark).multiplyScalar(0.22) }),
+   206→    );
+   207→    const capMats = LIQUIDS.map(
+   208→      (c) => new THREE.MeshPhongMaterial({ color: new THREE.Color(c.light), shininess: 120, specular: 0xffffff, emissive: new THREE.Color(c.light).multiplyScalar(0.18) }),
+   209→    );
+   210→    const glassMat = new THREE.MeshPhongMaterial({
+   211→      color: 0xdff2fb,
+   212→      transparent: true,
+   213→      opacity: 0.16,
+   214→      shininess: 90,
+   215→      specular: 0xffffff,
+   216→      depthWrite: false,
+   217→      side: THREE.DoubleSide,
+   218→    });
+   219→    const rimMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, shininess: 80 });
+   220→
+   221→    const bottomY = (k: number) => 0.1 + UNIT_H / 2 + k * UNIT_H;
+   222→
+   223→    /* layout: how many shelf rows and how many tubes per row.
+   224→     * Row 0 is the TOP floating shelf, row 1 sits below it —
+   225→     * indices 0..rows[0]-1 live on the top shelf (matches the DOM board). */
+   226→    function layoutFor(n: number): { rows: number[]; twoRows: boolean } {
+   227→      const twoRows = n >= TWO_ROWS_FROM;
+   228→      return { rows: twoRows ? [Math.ceil(n / 2), n - Math.ceil(n / 2)] : [n], twoRows };
+   229→    }
+   230→
+   231→    function slotBase(i: number, n: number): { x: number; y: number; rowTop: boolean } {
+   232→      const { rows, twoRows } = layoutFor(n);
+   233→      const rowTop = twoRows && i < rows[0];
+   234→      const rowCount = twoRows ? (rowTop ? rows[0] : rows[1]) : rows[0];
+   235→      const startInRow = twoRows && !rowTop ? rows[0] : 0;
+   236→      const k = i - startInRow;
+   237→      return { x: (k - (rowCount - 1) / 2) * SPACING, y: rowTop ? RISE : 0, rowTop };
+   238→    }
+   239→
+   240→    function makeUnit(color: number, k: number): THREE.Mesh {
+   241→      const m = new THREE.Mesh(unitGeo, liqMats[color % liqMats.length]);
+   242→      m.position.y = bottomY(k);
+   243→      // glossy top surface: a child so it inherits the drain/fill scaling —
+   244→      // the "liquid level" visibly descends when the unit shrinks
+   245→      const cap = new THREE.Mesh(capGeo, capMats[color % capMats.length]);
+   246→      cap.position.y = UNIT_H * 0.44 - 0.045;
+   247→      m.add(cap);
+   248→      return m;
+   249→    }
+   250→
+   251→    /* floating board root — tubes hover in the air, no table beneath */
+   252→    const boardRoot = new THREE.Group();
+   253→    scene.add(track(boardRoot));
+   254→
+   255→    /* ambient golden dust drifting around the floating tubes */
+   256→    const dust = (() => {
+   257→      const n = 46;
+   258→      const positions = new Float32Array(n * 3);
+   259→      const vels = new Float32Array(n * 3);
+   260→      const bounds = { x: 5.7, y: RISE + TUBE_H + 1.4, z: 2.5 };
+   261→      for (let i = 0; i < n; i++) {
+   262→        positions[i * 3] = (Math.random() * 2 - 1) * bounds.x;
+   263→        positions[i * 3 + 1] = Math.random() * bounds.y * 1.4 - 0.4;
+   264→        positions[i * 3 + 2] = (Math.random() * 2 - 1) * bounds.z;
+   265→        vels[i * 3] = (Math.random() - 0.5) * 0.12;
+   266→        vels[i * 3 + 1] = 0.14 + Math.random() * 0.2;
+   267→        vels[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+   268→      }
+   269→      const geo = new THREE.BufferGeometry();
+   270→      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+   271→      const mat = new THREE.PointsMaterial({
+   272→        color: 0xffe9b0,
+   273→        size: 0.085,
+   274→        transparent: true,
+   275→        opacity: 0.55,
+   276→        depthWrite: false,
+   277→      });
+   278→      const points = new THREE.Points(geo, mat);
+   279→      scene.add(points);
+   280→      return { points, mat, vels, bounds };
+   281→    })();
+   282→    dustRef.current = dust;
+   283→
+   284→    /* ------------------------- camera framing ------------------------- */
+   285→    /* Fits the whole floating board (both shelves + pour headroom) with a
+   286→     * gentle downward tilt. Re-run on build and on resize. */
+   287→    let fitLook = new THREE.Vector3(0, 1.2, 0);
+   288→    let fitCamYOff = 2.2;
+   289→    let fitDist = 9;
+   290→
+   291→    function refitCamera() {
+   292→      const n = Math.max(nodes.length, 1);
+   293→      const { twoRows } = layoutFor(n);
+   294→      let maxCount = 1;
+   295→      let maxRowY = 0;
+   296→      nodes.forEach((nd) => {
+   297→        maxRowY = Math.max(maxRowY, nd.baseY);
+   298→      });
+   299→      const { rows } = layoutFor(n);
+   300→      maxCount = Math.max(...rows);
+   301→      const width = (maxCount - 1) * SPACING + TUBE_R * 2 + 0.5;
+   302→      const worldTop = maxRowY + TUBE_H + 0.66; // headroom for hover + pour arc
+   303→      const worldBottom = -0.22;
+   304→      const contentH = worldTop - worldBottom;
+   305→      const vFov = (camera.fov * Math.PI) / 180;
+   306→      const aspect = Math.max(camera.aspect || (el.clientWidth || 1) / (el.clientHeight || 1), 0.35);
+   307→      const distV = (contentH * 1.03) / (2 * Math.tan(vFov / 2));
+   308→      const distH = (width * 1.03) / (2 * Math.tan(vFov / 2) * aspect);
+   309→      fitDist = Math.max(distV, distH) + 0.3;
+   310→      fitLook = new THREE.Vector3(0, (worldTop + worldBottom) / 2 + (twoRows ? 0 : 0.06), 0);
+   311→      fitCamYOff = fitDist * 0.3;
+   312→      camera.position.set(0, fitLook.y + fitCamYOff, Math.sqrt(Math.max(fitDist * fitDist - fitCamYOff * fitCamYOff, 1)));
+   313→      camera.lookAt(fitLook);
+   314→      lookTargetV.copy(fitLook);
+   315→    }
+   316→
+   317→    function buildBoard(state: number[][]) {
+   318→      // clear previous tubes
+   319→      for (const n of nodes) {
+   320→        n.group.removeFromParent();
+   321→        disposeObject(n.group);
+   322→      }
+   323→      nodes.length = 0;
+   324→      growRef.current = [];
+   325→
+   326→      state.forEach((units, i) => {
+   327→        const { x, y } = slotBase(i, state.length);
+   328→
+   329→        const group = new THREE.Group();
+   330→        group.position.set(x, y, 0);
+   331→
+   332→        const glass = new THREE.Mesh(glassGeo, glassMat);
+   333→        glass.position.y = TUBE_H / 2 + 0.08;
+   334→        group.add(glass);
+   335→
+   336→        const rim = new THREE.Mesh(new THREE.TorusGeometry(TUBE_R + 0.02, 0.045, 10, 26), rimMat);
+   337→        rim.rotation.x = Math.PI / 2;
+   338→        rim.position.y = TUBE_H + 0.08;
+   339→        group.add(rim);
+   340→
+   341→        const ringMat = new THREE.MeshBasicMaterial({ color: 0xf5b301, transparent: true, opacity: 0 });
+   342→        const ring = new THREE.Mesh(ringGeo, ringMat);
+   343→        ring.rotation.x = Math.PI / 2;
+   344→        ring.position.y = 0.09;
+   345→        group.add(ring);
+   346→
+   347→        const hit = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+   348→        hit.position.y = TUBE_H / 2;
+   349→        hit.userData.tubeIndex = i;
+   350→        group.add(hit);
+   351→
+   352→        const liquid = new THREE.Group();
+   353→        group.add(liquid);
+   354→
+   355→        const node: TubeNode = { group, liquid, ring, ringMat, hit, baseX: x, baseY: y, baseZ: 0, floatPhase: i * 0.83 + Math.abs(x) * 0.6, units: [] };
+   356→        nodes.push(node);
+   357→        boardRoot.add(group);
+   358→
+   359→        // initial units rise with a small stagger
+   360→        units.forEach((c, k2) => {
+   361→          const m = makeUnit(c, k2);
+   362→          m.scale.y = 0.01;
+   363→          node.units.push(m);
+   364→          node.liquid.add(m);
+   365→          growRef.current.push({ mesh: m, p: -k2 * 0.35, k: k2 });
+   366→        });
+   367→      });
+   368→
+   369→      refitCamera();
+   370→    }
+   371→
+   372→    function syncTubes(state: number[][]) {
+   373→      state.forEach((target, i) => {
+   374→        const node = nodes[i];
+   375→        if (!node) return;
+   376→        const quiet = quietRef.current.has(i);
+   377→        // shrink: remove extras
+   378→        while (node.units.length > target.length) {
+   379→          const m = node.units.pop();
+   380→          if (m) m.removeFromParent();
+   381→        }
+   382→        // grow: add missing
+   383→        while (node.units.length < target.length) {
+   384→          const k = node.units.length;
+   385→          const m = makeUnit(target[k], k);
+   386→          if (quiet) {
+   387→            m.scale.y = 1;
+   388→          } else {
+   389→            m.scale.y = 0.01;
+   390→            growRef.current.push({ mesh: m, p: 0, k });
+   391→          }
+   392→          node.units.push(m);
+   393→          node.liquid.add(m);
+   394→        }
+   395→        // rebuild if colors differ with same length
+   396→        if (node.units.length === target.length) {
+   397→          const mismatch = target.some((c, k) => node.units[k].material !== liqMats[c % liqMats.length]);
+   398→          if (mismatch) {
+   399→            node.units.forEach((m) => m.removeFromParent());
+   400→            node.units = [];
+   401→            target.forEach((c, k) => {
+   402→              const m = makeUnit(c, k);
+   403→              node.units.push(m);
+   404→              node.liquid.add(m);
+   405→            });
+   406→          }
+   407→        }
+   408→        // hard guarantee: every kept unit sits EXACTLY on its stack slot so
+   409→        // colors never drift or hover after a tube empties and refills
+   410→        node.units.forEach((m, k) => {
+   411→          m.position.y = bottomY(k);
+   412→          if (m.scale.y < 0.99 && m.scale.y > 0.02 && !growRef.current.some((g) => g.mesh === m)) {
+   413→            // restore any unit left mid-shrink by an interrupted pour
+   414→            m.scale.y = 1;
+   415→          }
+   416→          m.visible = true;
+   417→        });
+   418→      });
+   419→      quietRef.current.clear();
+   420→    }
+   421→
+   422→    function burst(idx: number) {
+   423→      const node = nodes[idx];
+   424→      if (!node) return;
+   425→      const n = 30;
+   426→      const positions = new Float32Array(n * 3);
+   427→      const vels = new Float32Array(n * 3);
+   428→      const origin = new THREE.Vector3(node.baseX, node.baseY + TUBE_H * 0.62, node.baseZ);
+   429→      for (let i = 0; i < n; i++) {
+   430→        positions[i * 3] = origin.x;
+   431→        positions[i * 3 + 1] = origin.y;
+   432→        positions[i * 3 + 2] = origin.z;
+   433→        const a = (i / n) * Math.PI * 2;
+   434→        const r = 0.8 + Math.random() * 1.4;
+   435→        vels[i * 3] = Math.cos(a) * r * 0.9;
+   436→        vels[i * 3 + 1] = 1.6 + Math.random() * 1.8;
+   437→        vels[i * 3 + 2] = Math.sin(a) * r * 0.55;
+   438→      }
+   439→      const geo = new THREE.BufferGeometry();
+   440→      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+   441→      const mat = new THREE.PointsMaterial({ color: 0xffd54f, size: 0.13, transparent: true, opacity: 1, depthWrite: false });
+   442→      const points = new THREE.Points(geo, mat);
+   443→      scene.add(points);
+   444→      burstsRef.current.push({ points, mat, vels, born: performance.now(), life: 950 });
+   445→    }
+   446→
+   447→    apiRef.current = { buildBoard, syncTubes, burst, refit: refitCamera };
+   448→
+   449→    /* ------------------------------ input ------------------------------ */
+   450→    const raycaster = new THREE.Raycaster();
+   451→    const ndc = new THREE.Vector2();
+   452→    let downX = 0;
+   453→    let downY = 0;
+   454→
+   455→    const onDown = (e: PointerEvent) => {
+   456→      downX = e.clientX;
+   457→      downY = e.clientY;
+   458→    };
+   459→    const onUp = (e: PointerEvent) => {
+   460→      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 9) return;
+   461→      const rect = canvas.getBoundingClientRect();
+   462→      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+   463→      raycaster.setFromCamera(ndc, camera);
+   464→      const hits = raycaster.intersectObjects(nodes.map((n) => n.hit), false);
+   465→      if (hits.length > 0) {
+   466→        const idx = hits[0].object.userData.tubeIndex as number;
+   467→        propsRef.current.onTap(idx);
+   468→      }
+   469→    };
+   470→    canvas.addEventListener("pointerdown", onDown);
+   471→    canvas.addEventListener("pointerup", onUp);
+   472→
+   473→    /* ------------------------------ resize ------------------------------ */
+   474→    const resize = () => {
+   475→      const w = el.clientWidth || 1;
+   476→      const h = el.clientHeight || 1;
+   477→      renderer.setSize(w, h, false);
+   478→      camera.aspect = w / h;
+   479→      camera.updateProjectionMatrix();
+   480→      refitCamera();
+   481→    };
+   482→    resize();
+   483→    const ro = new ResizeObserver(resize);
+   484→    ro.observe(el);
+   485→
+   486→    /* ------------------------------ loop ------------------------------ */
+   487→    const clock = new THREE.Clock();
+   488→    let raf = 0;
+   489→    let running = true;
+   490→    let elapsed = 0;
+   491→    const prevShkRef = { current: null as number | null };
+   492→
+   493→    const tick = () => {
+   494→      if (!running) return;
+   495→      raf = requestAnimationFrame(tick);
+   496→      const dt = Math.min(clock.getDelta(), 0.05);
+   497→      elapsed += dt;
+   498→      const now = performance.now();
+   499→      const { selected: sel, hinted: hin, shakeIdx: shk } = propsRef.current;
+   500→
+   501→      // unit grow pop (easeOutBack) — liquid rises from the stack base,
+   502→      // the bottom edge stays glued to its slot while the column grows
+   503→      growRef.current = growRef.current.filter((g) => {
+   504→        g.p += dt * 3.4;
+   505→        const p = clamp01(g.p);
+   506→        const back = 1 + 2.2 * Math.pow(p - 1, 3) + 1.2 * Math.pow(p - 1, 2);
+   507→        const s = Math.max(0.01, p < 1 ? back : 1);
+   508→        g.mesh.scale.y = s;
+   509→        g.mesh.position.y = bottomY(g.k) - HALF_H * (1 - s);
+   510→        if (g.p >= 1) {
+   511→          g.mesh.scale.y = 1;
+   512→          g.mesh.position.y = bottomY(g.k);
+   513→          return false;
+   514→        }
+   515→        return true;
+   516→      });
+   517→
+   518→      // per-tube visuals
+   519→      nodes.forEach((node, i) => {
+   520→        if (pouringRef.current !== i) {
+   521→          // gentle idle bob around the tube's own shelf height
+   522→          const bob = Math.sin(elapsed * 1.15 + node.floatPhase) * 0.07;
+   523→          const targetY = node.baseY + (sel === i ? SEL_LIFT : 0) + bob;
+   524→          node.group.position.y += (targetY - node.group.position.y) * Math.min(1, dt * 8);
+   525→          // shake (only re-armed when the shake target changes)
+   526→          if (shk !== prevShkRef.current) {
+   527→            prevShkRef.current = shk;
+   528→            if (shk === i) shakeRef.current = { idx: i, until: now + 380 };
+   529→          }
+   530→          if (shakeRef.current && shakeRef.current.idx === i) {
+   531→            const remain = shakeRef.current.until - now;
+   532→            if (remain <= 0) {
+   533→              shakeRef.current = null;
+   534→              node.group.position.x = node.baseX;
+   535→            } else {
+   536→              const decay = remain / 380;
+   537→              node.group.position.x = node.baseX + Math.sin(elapsed * 55) * 0.09 * decay;
+   538→            }
+   539→          } else {
+   540→            node.group.position.x += (node.baseX - node.group.position.x) * Math.min(1, dt * 10);
+   541→          }
+   542→        }
+   543→
+   544→        // ring state
+   545→        const complete = completeRef.current[i] ?? false;
+   546→        const isSel = sel === i;
+   547→        const isHint = hin !== null && (hin.from === i || hin.to === i);
+   548→        if (isSel) {
+   549→          node.ringMat.color.setHex(0xf5a623);
+   550→          node.ringMat.opacity = 0.7 + Math.sin(elapsed * 7) * 0.25;
+   551→          node.ring.scale.setScalar(1 + Math.sin(elapsed * 7) * 0.05);
+   552→        } else if (isHint) {
+   553→          node.ringMat.color.setHex(0x2dd4a0);
+   554→          node.ringMat.opacity = 0.55 + Math.sin(elapsed * 6) * 0.35;
+   555→          node.ring.scale.setScalar(1 + Math.sin(elapsed * 6) * 0.07);
+   556→        } else if (complete) {
+   557→          node.ringMat.color.setHex(0xffd54f);
+   558→          node.ringMat.opacity = 0.42 + Math.sin(elapsed * 2.4) * 0.18;
+   559→          node.ring.scale.setScalar(1);
+   560→        } else {
+   561→          node.ringMat.opacity = 0;
+   562→        }
+   563→      });
+   564→
+   565→      // sparkle bursts
+   566→      burstsRef.current = burstsRef.current.filter((b) => {
+   567→        const age = now - b.born;
+   568→        if (age > b.life) {
+   569→          b.points.removeFromParent();
+   570→          b.points.geometry.dispose();
+   571→          b.mat.dispose();
+   572→          return false;
+   573→        }
+   574→        const pos = b.points.geometry.attributes.position as THREE.BufferAttribute;
+   575→        for (let i = 0; i < pos.count; i++) {
+   576→          pos.setXYZ(
+   577→            i,
+   578→            pos.getX(i) + b.vels[i * 3] * dt,
+   579→            pos.getY(i) + b.vels[i * 3 + 1] * dt,
+   580→            pos.getZ(i) + b.vels[i * 3 + 2] * dt,
+   581→          );
+   582→          b.vels[i * 3 + 1] -= 2.6 * dt;
+   583→        }
+   584→        pos.needsUpdate = true;
+   585→        b.mat.opacity = 1 - age / b.life;
+   586→        return true;
+   587→      });
+   588→
+   589→      // droplet arcs
+   590→      dropsRef.current = dropsRef.current.filter((d) => {
+   591→        const age = now - d.born;
+   592→        if (age > d.dur) {
+   593→          d.points.removeFromParent();
+   594→          d.points.geometry.dispose();
+   595→          d.mat.dispose();
+   596→          return false;
+   597→        }
+   598→        const pos = d.points.geometry.attributes.position as THREE.BufferAttribute;
+   599→        for (let i = 0; i < d.n; i++) {
+   600→          const local = clamp01((age - i * (d.dur / d.n) * 0.5) / (d.dur * 0.55));
+   601→          if (local <= 0 || local >= 1) {
+   602→            pos.setXYZ(i, d.src.x, -10, d.src.z);
+   603→          } else {
+   604→            bezierArc(d.src, d.dst, 0.5, local, V3);
+   605→            pos.setXYZ(i, V3.x, V3.y, V3.z);
+   606→          }
+   607→        }
+   608→        pos.needsUpdate = true;
+   609→        return true;
+   610→      });
+   611→
+   612→      // ambient dust drift (wraps around the floating board)
+   613→      if (dustRef.current) {
+   614→        const d = dustRef.current;
+   615→        const pos = d.points.geometry.attributes.position as THREE.BufferAttribute;
+   616→        for (let i = 0; i < pos.count; i++) {
+   617→          let x = pos.getX(i) + d.vels[i * 3] * dt;
+   618→          let y = pos.getY(i) + d.vels[i * 3 + 1] * dt;
+   619→          let z = pos.getZ(i) + d.vels[i * 3 + 2] * dt;
+   620→          if (y > d.bounds.y * 1.45) y = -0.5;
+   621→          if (x > d.bounds.x) x = -d.bounds.x;
+   622→          else if (x < -d.bounds.x) x = d.bounds.x;
+   623→          if (z > d.bounds.z) z = -d.bounds.z;
+   624→          else if (z < -d.bounds.z) z = d.bounds.z;
+   625→          pos.setXYZ(i, x, y, z);
+   626→        }
+   627→        pos.needsUpdate = true;
+   628→      }
+   629→
+   630→      // gentle camera sway
+   631→      camera.position.x = Math.sin(elapsed * 0.4) * 0.14;
+   632→      camera.lookAt(lookTargetV);
+   633→
+   634→      renderer.render(scene, camera);
+   635→    };
+   636→
+   637→    /* ------------------------------ imperative pour ------------------------------ */
+   638→    const tweenMs = (ms: number, onU: (p: number, tMs: number) => void) =>
+   639→      new Promise<void>((resolve) => {
+   640→        const t0 = performance.now();
+   641→        const step = () => {
+   642→          const tMs = performance.now() - t0;
+   643→          const p = clamp01(tMs / ms);
+   644→          onU(p, tMs);
+   645→          if (p < 1) requestAnimationFrame(step);
+   646→          else resolve();
+   647→        };
+   648→        requestAnimationFrame(step);
+   649→      });
+   650→
+   651→    pourImplRef.current = async (from, to, count, color) => {
+   652→        const nodeF = nodes[from];
+   653→        const nodeT = nodes[to];
+   654→        if (!nodeF || !nodeT) return;
+   655→        pouringRef.current = from;
+   656→        const basePos = nodeF.group.position.clone();
+   657→        const mouthRestY = nodeF.baseY + TUBE_H;
+   658→
+   659→        /* --- phase A: rise straight up (no flying across the board) --- */
+   660→        await tweenMs(FLY_OUT, (p) => {
+   661→          const e = 1 - Math.pow(1 - p, 3);
+   662→          nodeF.group.position.y = basePos.y + POUR_LIFT * e;
+   663→        });
+   664→
+   665→        /* --- phase B: tip towards the destination + transfer --- */
+   666→        let dx = nodeT.baseX - nodeF.baseX;
+   667→        if (Math.abs(dx) < 0.12) dx = dx >= 0 ? 0.35 : -0.35; // vertical pour → tip sideways
+   668→        const dir = new THREE.Vector3(dx, 0, nodeT.baseZ - nodeF.baseZ);
+   669→        const axis = new THREE.Vector3().crossVectors(UP, dir).normalize();
+   670→        const pourDur = count * UNIT_MS + 110;
+   671→        const srcLen = tubesRef.current[from]?.length ?? nodeF.units.length;
+   672→        const dstLen = tubesRef.current[to]?.length ?? 0;
+   673→
+   674→        // ghosts in the destination — grow from its exact stack slots
+   675→        const ghosts: THREE.Mesh[] = [];
+   676→        for (let k = 0; k < count; k++) {
+   677→          const m = new THREE.Mesh(unitGeo, liqMats[color % liqMats.length]);
+   678→          m.position.y = bottomY(dstLen + k);
+   679→          m.scale.y = 0.01;
+   680→          nodeT.liquid.add(m);
+   681→          ghosts.push(m);
+   682→        }
+   683→
+   684→        // color stream: from the tipped mouth to the destination mouth
+   685→        const mouthLocal = new THREE.Vector3(0, TUBE_H, 0).applyAxisAngle(axis, TILT * 0.8);
+   686→        const mouthSrc = mouthLocal.add(nodeF.group.position);
+   687→        const mouthDst = new THREE.Vector3(nodeT.baseX, nodeT.baseY + TUBE_H + 0.04, nodeT.baseZ);
+   688→        const dN = 9;
+   689→        const dGeo = new THREE.BufferGeometry();
+   690→        dGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(dN * 3), 3));
+   691→        const dMat = new THREE.PointsMaterial({ color: LIQUIDS[color % LIQUIDS.length].base, size: 0.1, transparent: true, opacity: 0.95, depthWrite: false });
+   692→        const dPoints = new THREE.Points(dGeo, dMat);
+   693→        scene.add(dPoints);
+   694→        dropsRef.current.push({ points: dPoints, mat: dMat, src: mouthSrc, dst: mouthDst, born: performance.now(), dur: pourDur + 60, n: dN });
+   695→
+   696→        await tweenMs(pourDur, (_p, tMs) => {
+   697→          // tip in during the first 45% of the pour
+   698→          const tiltP = clamp01(tMs / (pourDur * 0.45));
+   699→          const tiltE = tiltP * tiltP * (3 - 2 * tiltP);
+   700→          nodeF.group.quaternion.setFromAxisAngle(axis, TILT * tiltE);
+   701→          // liquid glides towards the mouth as the tube tips past horizontal
+   702→          const slide = tiltE * 0.55;
+   703→          // source units drain sequentially — the bottom edge of each unit
+   704→          // stays glued to its stack slot, and drained slivers vanish
+   705→          for (let k = 0; k < count; k++) {
+   706→            const sp = clamp01((tMs - k * UNIT_MS) / 95);
+   707→            const idx = srcLen - 1 - k;
+   708→            const m = nodeF.units[idx];
+   709→            if (m) {
+   710→              const s = Math.max(0.02, 1 - sp * 0.98);
+   711→              m.scale.y = s;
+   712→              m.position.y = bottomY(idx) + slide - HALF_H * (1 - s);
+   713→              m.visible = s > 0.05;
+   714→            }
+   715→          }
+   716→          // the still-liquid units ride up with the tilt, keeping the stack
+   717→          for (let k = 0; k < srcLen - count; k++) {
+   718→            const m = nodeF.units[k];
+   719→            if (m) {
+   720→              m.position.y = bottomY(k) + slide;
+   721→              m.visible = true;
+   722→            }
+   723→          }
+   724→          // destination ghosts fill sequentially, growing upward from the base
+   725→          for (let k = 0; k < count; k++) {
+   726→            const gp = clamp01((tMs - 90 - k * UNIT_MS) / 110);
+   727→            const s = Math.max(0.01, gp);
+   728→            ghosts[k].scale.y = s;
+   729→            ghosts[k].position.y = bottomY(dstLen + k) - HALF_H * (1 - s);
+   730→          }
+   731→        });
+   732→
+   733→        /* --- phase C: straighten + settle back onto its shelf --- */
+   734→        await tweenMs(FLY_BACK, (p) => {
+   735→          const e = p * p * (3 - 2 * p);
+   736→          nodeF.group.quaternion.setFromAxisAngle(axis, TILT * (1 - e));
+   737→          nodeF.group.position.y = THREE.MathUtils.lerp(basePos.y + POUR_LIFT, basePos.y, e);
+   738→        });
+   739→        nodeF.group.quaternion.identity();
+   740→        nodeF.group.position.copy(basePos);
+   741→        // pin every source unit back onto its exact stack slot
+   742→        nodeF.units.forEach((m, k) => {
+   743→          m.position.y = bottomY(k);
+   744→          if (k < srcLen - count) {
+   745→            m.scale.y = 1;
+   746→            m.visible = true;
+   747→          }
+   748→        });
+   749→
+   750→        ghosts.forEach((m) => m.removeFromParent());
+   751→        pouringRef.current = null;
+   752→        // let the state reconciliation place the real destination units quietly
+   753→        quietRef.current.add(to);
+   754→      };
+   755→
+   756→    buildBoard(tubesRef.current);
+   757→    completeRef.current = tubesRef.current.map(isTubeComplete);
+   758→    raf = requestAnimationFrame(tick);
+   759→
+   760→    // dev helper: deterministic taps for automated testing
+   761→    if (process.env.NODE_ENV !== "production") {
+   762→      (window as unknown as { __cmTap?: (i: number) => void }).__cmTap = (i: number) =>
+   763→        propsRef.current.onTap(i);
+   764→      (window as unknown as { __cmDebug?: () => unknown }).__cmDebug = () => ({
+   765→        aspect: camera.aspect,
+   766→        cam: camera.position.toArray().map((v) => Math.round(v * 100) / 100),
+   767→        look: fitLook.toArray().map((v) => Math.round(v * 100) / 100),
+   768→        fitDist: Math.round(fitDist * 100) / 100,
+   769→        n: nodes.length,
+   770→        tubes: nodes.map((nd) => [Math.round(nd.group.position.x * 100) / 100, Math.round(nd.group.position.y * 100) / 100]),
+   771→        units: nodes.map((nd) => nd.units.length),
+   772→        state: tubesRef.current.map((t) => t.join(",")),
+   773→      });
+   774→    }
+   775→
+   776→    const onVis = () => {
+   777→      if (document.hidden) {
+   778→        running = false;
+   779→        cancelAnimationFrame(raf);
+   780→      } else if (!running) {
+   781→        running = true;
+   782→        clock.getDelta();
+   783→        raf = requestAnimationFrame(tick);
+   784→      }
+   785→    };
+   786→    document.addEventListener("visibilitychange", onVis);
+   787→
+   788→    return () => {
+   789→      running = false;
+   790→      cancelAnimationFrame(raf);
+   791→      document.removeEventListener("visibilitychange", onVis);
+   792→      canvas.removeEventListener("pointerdown", onDown);
+   793→      canvas.removeEventListener("pointerup", onUp);
+   794→      ro.disconnect();
+   795→      disposables.forEach((o) => disposeObject(o));
+   796→      unitGeo.dispose();
+   797→      capGeo.dispose();
+   798→      glassGeo.dispose();
+   799→      ringGeo.dispose();
+   800→      hitGeo.dispose();
+   801→      liqMats.forEach((m) => m.dispose());
+   802→      capMats.forEach((m) => m.dispose());
+   803→      glassMat.dispose();
+   804→      rimMat.dispose();
+   805→      if (dustRef.current) {
+   806→        dustRef.current.points.geometry.dispose();
+   807→        dustRef.current.mat.dispose();
+   808→        dustRef.current = null;
+   809→      }
+   810→      scene.clear();
+   811→      renderer.dispose();
+   812→      canvas.remove();
+   813→    };
+   814→  }, []);
+   815→
+   816→  /* ----------------------- reactive state → scene ----------------------- */
+   817→  useEffect(() => {
+   818→    apiRef.current?.syncTubes(tubes);
+   819→    completeRef.current = tubes.map(isTubeComplete);
+   820→  }, [tubes]);
+   821→
+   822→  useEffect(() => {
+   823→    const newly = justCompleted.filter((i) => !prevCompletedRef.current.includes(i));
+   824→    newly.forEach((i) => apiRef.current?.burst(i));
+   825→    prevCompletedRef.current = justCompleted;
+   826→  }, [justCompleted]);
+   827→
+   828→  return <div ref={mountRef} className={className ?? "h-72 w-full"} aria-hidden />;
+   829→});
+   830→
+   831→const V3 = new THREE.Vector3();
+   832→
