@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
  * time, BOTH sides receive a coin grant (claimed on the next sync).
  */
 
-export const REFERRAL_REWARD = 300;
+export const REFERRAL_REWARD = 200;
 export const REFERRAL_REASON_INVITE = "referral-invite";
 export const REFERRAL_REASON_JOIN = "referral-join";
 
