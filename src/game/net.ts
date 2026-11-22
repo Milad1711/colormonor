@@ -8,6 +8,7 @@
 
 import { useGame } from "./store";
 import { getDeviceId } from "./device";
+import { getApiBase } from "./api-base";
 import { t, type Lang } from "./i18n";
 import { toast } from "@/components/game/toast";
 
@@ -60,7 +61,7 @@ export async function syncNow(force = false): Promise<SyncResult | null> {
   lastSync = now;
   try {
     const { score, stars, levelsCleared } = computeScore();
-    const res = await fetch("/api/player/sync", {
+    const res = await fetch(getApiBase() + "/api/player/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +86,7 @@ export async function syncNow(force = false): Promise<SyncResult | null> {
         const lang: Lang = useGame.getState().language ?? "fa";
         toast(`${t(lang, "gift_received")} +${total}`, "success");
       }
-      fetch("/api/player/claim", {
+      fetch(getApiBase() + "/api/player/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceId: getDeviceId(), ids: grants.map((g) => g.id) }),
@@ -105,7 +106,7 @@ export async function syncNow(force = false): Promise<SyncResult | null> {
 
 export async function fetchLeaderboard(): Promise<LeaderRow[]> {
   try {
-    const res = await fetch("/api/leaderboard", { cache: "no-store" });
+    const res = await fetch(getApiBase() + "/api/leaderboard", { cache: "no-store" });
     const data = await res.json();
     return data?.ok && Array.isArray(data.players) ? data.players : [];
   } catch {
