@@ -3,7 +3,10 @@
 // - Grant    : a coin gift issued by the admin panel, claimed by the client
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // driverAdapters lets PrismaClient run through the libSQL/Turso adapter
+  // (see src/lib/db.ts) instead of the bundled native engine.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
