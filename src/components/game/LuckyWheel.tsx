@@ -28,7 +28,7 @@ const SEGMENTS = [
   { value: 150, color: "#3EC5B0", text: "#134D44" },
   { value: 200, color: "#A267D8", text: "#4A2377" },
   { value: 300, color: "#E2725B", text: "#6E2413" },
-  { value: 500, color: "#F5B301", text: "#6E4300" },
+  { value: 250, color: "#F5B301", text: "#6E4300" },
 ] as const;
 
 /** weights aligned with SEGMENTS (jackpot rare) */

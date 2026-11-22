@@ -14,6 +14,7 @@ import { LeaderboardModal } from "./LeaderboardModal";
 import { ReferralModal } from "./ReferralModal";
 import { sfx } from "@/game/audio";
 import { fmtNum } from "@/game/i18n";
+import { isNativeApp } from "@/lib/bazaar";
 import { TOTAL_LEVELS } from "@/game/levels";
 import { useRef, useState } from "react";
 
@@ -31,13 +32,16 @@ export function MainMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const setLanguage = useGame((s) => s.setLanguage);
   const [boardOpen, setBoardOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
-  // hidden admin entry: five taps on the footer line opens the admin panel
+  // hidden admin entry: five taps on the footer line opens the admin panel.
+  // native APK: same-frame navigation — the popup WebView never becomes
+  // visible on screen, so window.open would look like a dead button.
   const adminTaps = useRef(0);
   const adminTap = () => {
     adminTaps.current += 1;
     if (adminTaps.current >= 5) {
       adminTaps.current = 0;
-      window.open("/admin", "_blank");
+      if (isNativeApp()) window.location.assign("/admin");
+      else window.open("/admin", "_blank");
     }
   };
 

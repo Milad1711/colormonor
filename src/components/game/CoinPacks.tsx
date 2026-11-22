@@ -4,6 +4,14 @@
  * CoinPacks — three golden coin bundles (small / medium / golden) with
  * real price points in Toman (Cafe-Bazaar-style tiers: 57k / 129k / 271k).
  *
+ * In the ANDROID APK the buy button goes through Café Bazaar's real
+ * in-app billing (src/lib/bazaar.ts ↔ native bridge): the payment dialog
+ * opens, the receipt is RSA-verified by the shell, then coins are granted.
+ * On the web the claim stays a demo checkout (no payment gateway there).
+ *
+ * Product ids in the Bazaar developer panel (must match exactly):
+ *   coin_pack_small / coin_pack_medium / coin_pack_golden
+ *
  * Coin amounts are tuned to the game economy (decor.ts):
  *  - hint costs 20, room bonus pays 100
  *  - furnishing one room with base models ≈ 410–620 coins
@@ -14,21 +22,26 @@
  *  - Golden 271,000 T → 6,800 coins ≈ the whole manor in luxury (+21% value)
  * Price-per-coin falls monotonically (47.5 → 44.5 → 39.9), so bigger packs
  * are always the better deal — the golden pack carries the "best value" tag.
- *
- * Claiming instantly tops up the wallet (demo checkout, no payment gateway),
- * with a chest flourish, confetti on the golden pack and a coin fly pop.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGame } from "@/game/store";
 import { sfx } from "@/game/audio";
 import { useT } from "./UiBits";
 import { Confetti } from "./Modal";
 import { toast } from "./toast";
 import { cn } from "@/lib/utils";
+import {
+  buyBazaar,
+  isNativeApp,
+  markTokenGranted,
+  purchasePayload,
+} from "@/lib/bazaar";
 
 interface PackDef {
   id: "small" | "medium" | "golden";
+  /** Café Bazaar product id — must exist verbatim in the developer panel. */
+  sku: "coin_pack_small" | "coin_pack_medium" | "coin_pack_golden";
   amount: number;
   /** price in Toman */
   price: number;
@@ -38,9 +51,9 @@ interface PackDef {
 }
 
 const PACKS: PackDef[] = [
-  { id: "small", amount: 1200, price: 57_000, nameKey: "pack_small", descKey: "pack_small_sub", skin: "wood" },
-  { id: "medium", amount: 2900, price: 129_000, nameKey: "pack_medium", descKey: "pack_medium_sub", skin: "silver" },
-  { id: "golden", amount: 6800, price: 271_000, nameKey: "pack_golden", descKey: "pack_golden_sub", skin: "gold" },
+  { id: "small", sku: "coin_pack_small", amount: 1200, price: 57_000, nameKey: "pack_small", descKey: "pack_small_sub", skin: "wood" },
+  { id: "medium", sku: "coin_pack_medium", amount: 2900, price: 129_000, nameKey: "pack_medium", descKey: "pack_medium_sub", skin: "silver" },
+  { id: "golden", sku: "coin_pack_golden", amount: 6800, price: 271_000, nameKey: "pack_golden", descKey: "pack_golden_sub", skin: "gold" },
 ];
 
 function ChestArt({ skin, className }: { skin: PackDef["skin"]; className?: string }) {
@@ -86,13 +99,46 @@ function PackCard({ pack, index }: { pack: PackDef; index: number }) {
   const { t, n } = useT();
   const addCoins = useGame((s) => s.addCoins);
   const [burst, setBurst] = useState(false);
+  // native flag only after mount — keeps SSR/CSR HTML identical
+  const [native, setNative] = useState(false);
+  const [buying, setBuying] = useState(false);
+  useEffect(() => setNative(isNativeApp()), []);
 
-  const claim = () => {
+  const celebrate = () => {
     sfx.chest();
-    addCoins(pack.amount);
     setBurst(true);
     setTimeout(() => setBurst(false), 900);
-    toast(`+${n(pack.amount)} ${t("pack_coins_word")} — ${t("pack_claimed_toast")}`, "success");
+  };
+
+  const claim = async () => {
+    if (!native) {
+      // web build: demo checkout (no payment gateway outside the app)
+      celebrate();
+      addCoins(pack.amount);
+      toast(`+${n(pack.amount)} ${t("pack_coins_word")} — ${t("pack_claimed_toast")}`, "success");
+      return;
+    }
+    if (buying) return;
+    setBuying(true);
+    try {
+      const ev = await buyBazaar(pack.sku, purchasePayload(pack.id));
+      if (ev.type === "purchase" && ev.ok) {
+        celebrate();
+        addCoins(pack.amount);
+        markTokenGranted(ev.token);
+        try { window.ColorManorBridge?.consume(ev.token); } catch { /* retried on restore */ }
+        toast(`+${n(pack.amount)} ${t("pack_coins_word")} — ${t("pack_purchased_toast")}`, "success");
+      } else if (ev.type === "purchase") {
+        const key =
+          ev.error === "cancelled" ? "pack_cancelled"
+          : ev.error === "bazaar_missing" ? "pack_no_bazaar"
+          : ev.error === "verify_failed" || ev.error === "bad_state" || ev.error === "wrong_package" ? "pack_verify_failed"
+          : "pack_failed";
+        toast(t(key), ev.error === "cancelled" ? "info" : "error");
+      }
+    } finally {
+      setBuying(false);
+    }
   };
 
   const golden = pack.skin === "gold";
@@ -124,14 +170,15 @@ function PackCard({ pack, index }: { pack: PackDef; index: number }) {
         <button
           type="button"
           onClick={claim}
+          disabled={buying}
           className={cn(
-            "btn-shine min-h-10 rounded-2xl px-3 py-1 text-sm font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.22)] transition-all active:translate-y-[3px] active:shadow-none",
+            "btn-shine min-h-10 rounded-2xl px-3 py-1 text-sm font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.22)] transition-all active:translate-y-[3px] active:shadow-none disabled:opacity-70",
             golden
               ? "bg-gradient-to-b from-amber-400 via-orange-400 to-orange-500"
               : "bg-gradient-to-b from-emerald-400 to-teal-500",
           )}
         >
-          {t("pack_buy")}
+          {buying && native ? t("pack_buying") : t("pack_buy")}
         </button>
         <span className="rounded-xl bg-stone-100 px-2 py-0.5 text-center text-[10px] font-black text-stone-500 tabular-nums">
           {n(pack.price)} {t("toman")}
@@ -145,13 +192,17 @@ function PackCard({ pack, index }: { pack: PackDef; index: number }) {
 
 export function CoinPacks() {
   const { t } = useT();
+  const [native, setNative] = useState(false);
+  useEffect(() => setNative(isNativeApp()), []);
   return (
     <div className="flex flex-col gap-3">
       <p className="text-center text-xs font-bold text-stone-500">{t("coin_packs_sub")}</p>
       {PACKS.map((p, i) => (
         <PackCard key={p.id} pack={p} index={i} />
       ))}
-      <p className="text-center text-[10px] font-bold leading-4 text-stone-400">{t("pack_demo_note")}</p>
+      <p className="text-center text-[10px] font-bold leading-4 text-stone-400">
+        {native ? t("pack_native_note") : t("pack_demo_note")}
+      </p>
     </div>
   );
 }

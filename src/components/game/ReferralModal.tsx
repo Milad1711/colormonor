@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getDeviceId } from "@/game/device";
+import { getApiBase } from "@/game/api-base";
 import { syncNow } from "@/game/net";
 import { sfx } from "@/game/audio";
 import { Modal, Confetti } from "./Modal";
@@ -42,11 +43,11 @@ export function ReferralModal({ open, onClose }: { open: boolean; onClose: () =>
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/player/referral?deviceId=${encodeURIComponent(getDeviceId())}`, {
+      const res = await fetch(`${getApiBase()}/api/player/referral?deviceId=${encodeURIComponent(getDeviceId())}`, {
         cache: "no-store",
       });
       const data = await res.json();
-      if (data?.ok) setInfo({ code: data.code, claimed: !!data.claimed, reward: data.reward ?? 300 });
+      if (data?.ok) setInfo({ code: data.code, claimed: !!data.claimed, reward: data.reward ?? 200 });
       else setErr(t("referral_err_net"));
     } catch {
       setErr(t("referral_err_net"));
@@ -98,7 +99,7 @@ export function ReferralModal({ open, onClose }: { open: boolean; onClose: () =>
     if (!code) return;
     setErr(null);
     try {
-      const res = await fetch("/api/player/referral", {
+      const res = await fetch(getApiBase() + "/api/player/referral", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceId: getDeviceId(), code }),
