@@ -389,7 +389,7 @@ export function WheelEntryButton({ onOpen }: { onOpen: () => void }) {
         sfx.tap();
         onOpen();
       }}
-      className="btn-shine relative flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-rose-500 via-red-500 to-rose-600 px-3 text-base font-black text-white shadow-[0_4px_0_#9F1239,inset_0_2px_0_rgba(255,255,255,0.45)] transition-all active:translate-y-[3px] active:shadow-none"
+      className="relative flex min-h-14 flex-1 items-center justify-center gap-2 rounded-3xl bg-gradient-to-b from-rose-500 via-red-500 to-rose-600 px-2 text-sm font-black text-white shadow-[0_4px_0_#9F1239,inset_0_2px_0_rgba(255,255,255,0.45)] transition-transform active:translate-y-[3px] active:shadow-none"
     >
       <svg viewBox="0 0 24 24" className="size-6" aria-hidden>
         <circle cx="12" cy="12" r="9" fill="#FFF3C4" stroke="#7F1D1D" strokeWidth="1.6" />
@@ -412,7 +412,7 @@ export function PacksEntryButton({ onOpen }: { onOpen: () => void }) {
         sfx.tap();
         onOpen();
       }}
-      className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 px-3 text-base font-black text-white shadow-[0_4px_0_#c2410c,inset_0_2px_0_rgba(255,255,255,0.45)] transition-all active:translate-y-[3px] active:shadow-none"
+      className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-3xl bg-gradient-to-b from-amber-400 to-orange-500 px-2 text-sm font-black text-white shadow-[0_4px_0_#c2410c,inset_0_2px_0_rgba(255,255,255,0.45)] transition-transform active:translate-y-[3px] active:shadow-none"
     >
       <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M3 10l9-7 9 7" />

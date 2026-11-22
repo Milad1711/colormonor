@@ -230,6 +230,21 @@ export function variantPrice(itemId: string, variant: number): number {
   return SHOP_ITEMS[itemId].prices[Math.min(Math.max(variant, 0), 2)];
 }
 
+/**
+ * i18n key describing exactly WHERE a slot's item is installed
+ * (floor / wall / window / ceiling) — used by the room placement
+ * guide, the empty-slot labels and the shop detail dialog.
+ */
+export function slotPlaceKey(slot: {
+  anchorTop?: boolean;
+  place?: "floor" | "wall" | "window";
+}): string {
+  if (slot.anchorTop) return "place_ceiling";
+  if (slot.place === "window") return "place_window";
+  if (slot.place === "wall") return "place_wall";
+  return "place_floor";
+}
+
 /** 3 stars: close to optimal. 2 stars: reasonable. else 1. */
 export function starsForMoves(moves: number, par: number): 1 | 2 | 3 {
   if (moves <= par + 2) return 3;

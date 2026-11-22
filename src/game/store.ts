@@ -194,15 +194,16 @@ export const useGame = create<GameStore>()(
       },
 
       unlockRoom: (roomId) => {
+        // Stars are a cumulative milestone gate, NOT a currency to spend:
+        // reaching the wing's star goal unlocks it for free, so players are
+        // never confused about why an item is still locked after unlocking
+        // another wing.
         const s = get();
         const room = ROOM_BY_ID.get(roomId);
         if (!room) return false;
         if (s.unlockedRooms.includes(roomId)) return false;
         if (s.starBalance < room.unlockStars) return false;
-        set({
-          starBalance: s.starBalance - room.unlockStars,
-          unlockedRooms: [...s.unlockedRooms, roomId],
-        });
+        set({ unlockedRooms: [...s.unlockedRooms, roomId] });
         return true;
       },
 

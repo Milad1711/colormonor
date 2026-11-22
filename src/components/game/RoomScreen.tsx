@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useGame } from "@/game/store";
-import { ROOM_BY_ID, variantPrice } from "@/game/decor";
+import { ROOM_BY_ID, variantPrice, slotPlaceKey } from "@/game/decor";
 import { sfx } from "@/game/audio";
 import { hasWebGL } from "@/game/three-kit";
 import { BackButton, CoinBadge, GameButton, useT } from "./UiBits";
@@ -25,6 +25,8 @@ export function RoomScreen() {
   const clearRoomJustCompleted = useGame((s) => s.clearRoomJustCompleted);
   /** last empty spot the player tapped — the shop button aligns beneath it */
   const [lastSlot, setLastSlot] = useState<string | null>(null);
+  /** placement guide panel (what goes where) — open by default */
+  const [guideOpen, setGuideOpen] = useState(true);
 
   const room = activeRoom ? ROOM_BY_ID.get(activeRoom) : null;
 
@@ -137,23 +139,25 @@ export function RoomScreen() {
         )}
       </div>
 
-      {/* per-slot coin chips — one under every empty spot, with the price */}
+      {/* per-slot chips — one under every empty spot: item name + where it
+          goes + price, so the player always knows WHAT belongs WHERE */}
       {emptySlots.length > 0 && (
-        <div className="relative mx-auto mt-1.5 h-14 w-full max-w-lg">
+        <div className="relative mx-auto mt-1.5 h-[8.5rem] w-full max-w-lg">
           {emptySlots.map((slot, i) => {
             const min = variantPrice(slot.item, 0);
             const affordable = coins >= min;
             const xpct = Math.min(88, Math.max(12, (slot.x / 400) * 100));
+            const row = i % 3;
             return (
               <button
                 key={slot.id}
                 type="button"
-                title={t("item_" + slot.item)}
-                aria-label={`${t("item_" + slot.item)} — ${t("coins")} ${n(min)}`}
+                title={`${t("item_" + slot.item)} — ${t(slotPlaceKey(slot))}`}
+                aria-label={`${t("item_" + slot.item)} — ${t(slotPlaceKey(slot))} — ${t("coins")} ${n(min)}`}
                 onClick={() => openSlot(slot.id)}
                 className={cn(
-                  "absolute flex -translate-x-1/2 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-black shadow-sm transition-transform active:scale-90",
-                  i % 2 === 0 ? "top-0" : "top-7",
+                  "absolute flex -translate-x-1/2 flex-col items-center rounded-2xl border px-2.5 py-1 shadow-sm transition-transform active:scale-90",
+                  row === 0 ? "top-0" : row === 1 ? "top-11" : "top-[5.5rem]",
                   affordable
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                     : "border-rose-200 bg-rose-50 text-rose-600",
@@ -161,15 +165,100 @@ export function RoomScreen() {
                 )}
                 style={{ left: `${xpct}%` }}
               >
-                <svg viewBox="0 0 24 24" className="size-3" aria-hidden>
-                  <circle cx="12" cy="12" r="9.5" fill="#F5B301" stroke="#B45309" strokeWidth="1.6" />
-                </svg>
-                +{n(min)}
+                <span className="whitespace-nowrap text-[11px] font-black leading-3.5">
+                  {t("item_" + slot.item)}
+                </span>
+                <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-[10px] font-bold leading-3 opacity-90">
+                  {t(slotPlaceKey(slot))}
+                  <svg viewBox="0 0 24 24" className="size-3" aria-hidden>
+                    <circle cx="12" cy="12" r="9.5" fill="#F5B301" stroke="#B45309" strokeWidth="1.6" />
+                  </svg>
+                  {n(min)}
+                </span>
               </button>
             );
           })}
         </div>
       )}
+
+      {/* placement guide — the full "what goes where" list for this room */}
+      <div className="mx-auto mt-1 w-full max-w-lg">
+        <button
+          type="button"
+          onClick={() => {
+            sfx.tap();
+            setGuideOpen((v) => !v);
+          }}
+          className="flex min-h-9 w-full items-center justify-between rounded-2xl border border-white/70 bg-white/80 px-3 text-xs font-black text-stone-700 shadow-sm backdrop-blur active:scale-[0.99]"
+        >
+          <span className="flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" className="size-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 18h6" />
+              <path d="M10 21h4" />
+              <path d="M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0012 3z" />
+            </svg>
+            {t("placement_guide")}
+            <span className="text-[10px] font-bold text-stone-400">· {t("placement_guide_sub")}</span>
+          </span>
+          <svg viewBox="0 0 24 24" className={cn("size-4 text-stone-400 transition-transform", guideOpen && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        {guideOpen && (
+          <div className="mt-1.5 rounded-2xl border border-white/70 bg-white/85 p-2 shadow-sm backdrop-blur">
+            <ul className="space-y-1">
+              {room.slots.map((slot) => {
+                const owned = decor[slot.id];
+                const price = variantPrice(slot.item, 0);
+                return (
+                  <li key={slot.id}>
+                    <button
+                      type="button"
+                      onClick={() => openSlot(slot.id)}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-start transition-colors",
+                        owned ? "bg-emerald-50/80" : "bg-amber-50/80 hover:bg-amber-100/80",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white",
+                          owned ? "bg-emerald-500" : "bg-amber-400",
+                        )}
+                        aria-hidden
+                      >
+                        {owned ? "✓" : "+"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-black text-stone-700">
+                          {t("item_" + slot.item)}
+                        </span>
+                        <span className="block text-[10px] font-bold text-stone-500">
+                          {t(slotPlaceKey(slot))}
+                          {!owned && (
+                            <span className="inline-flex items-center gap-0.5">
+                              ·
+                              <svg viewBox="0 0 24 24" className="size-3" aria-hidden>
+                                <circle cx="12" cy="12" r="9.5" fill="#F5B301" stroke="#B45309" strokeWidth="1.6" />
+                              </svg>
+                              {n(price)}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      {!owned && (
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">
+                          {t("buy")}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {/* footer — go-to-shop sits exactly beneath the relevant empty spot */}
       <div className="mx-auto mt-1 w-full max-w-lg">

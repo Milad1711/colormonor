@@ -140,7 +140,7 @@ export function ReferralModal({ open, onClose }: { open: boolean; onClose: () =>
         <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{t("referral_sub")}</p>
       </div>
 
-      {/* my code */}
+      {/* my code — code box, then its actions directly beneath it */}
       <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-center">
         <div className="text-[11px] font-black text-emerald-700">{t("referral_my_code")}</div>
         <div
@@ -156,14 +156,14 @@ export function ReferralModal({ open, onClose }: { open: boolean; onClose: () =>
           <button
             type="button"
             onClick={copyCode}
-            className="min-h-9 rounded-xl bg-emerald-500 px-3 text-xs font-black text-white shadow-[0_3px_0_#047857] active:translate-y-[2px] active:shadow-none"
+            className="min-h-11 rounded-xl bg-emerald-500 px-3 text-xs font-black text-white shadow-[0_3px_0_#047857] active:translate-y-[2px] active:shadow-none"
           >
             {t("referral_copy")}
           </button>
           <button
             type="button"
             onClick={shareCode}
-            className="min-h-9 rounded-xl border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-700 shadow-[0_3px_0_#a7f3d0] active:translate-y-[2px] active:shadow-none"
+            className="min-h-11 rounded-xl border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-700 shadow-[0_3px_0_#a7f3d0] active:translate-y-[2px] active:shadow-none"
           >
             {t("referral_share")}
           </button>
@@ -178,25 +178,24 @@ export function ReferralModal({ open, onClose }: { open: boolean; onClose: () =>
         {t("referral_reward_row")}
       </div>
 
-      {/* friend code entry */}
+      {/* friend code entry — the claim button sits EXACTLY beneath the
+          code input: full-width, stacked, clean */}
       {!info?.claimed ? (
         <div className="mt-3 rounded-2xl border border-stone-200 bg-white/90 p-3">
-          <div className="text-[11px] font-black text-stone-500">{t("referral_enter")}</div>
-          <div className="mt-1.5 flex items-center gap-2">
-            <input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-              dir="ltr"
-              maxLength={12}
-              className="min-h-11 flex-1 rounded-xl border-2 border-amber-200 bg-amber-50/60 px-3 text-center font-mono text-lg font-black tracking-[0.2em] text-stone-800 outline-none focus:border-amber-400"
-              placeholder="ABC123"
-              aria-label={t("referral_enter")}
-            />
-            <GameButton className="px-4" onClick={submit} disabled={!codeInput.trim()}>
-              {t("referral_submit")}
-            </GameButton>
-          </div>
+          <div className="text-center text-[11px] font-black text-stone-500">{t("referral_enter")}</div>
+          <input
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            dir="ltr"
+            maxLength={12}
+            className="mt-1.5 min-h-12 w-full rounded-xl border-2 border-amber-200 bg-amber-50/60 px-3 text-center font-mono text-lg font-black tracking-[0.2em] text-stone-800 outline-none focus:border-amber-400"
+            placeholder="ABC123"
+            aria-label={t("referral_enter")}
+          />
+          <GameButton className="mt-2 w-full" onClick={submit} disabled={!codeInput.trim()}>
+            {t("referral_submit")}
+          </GameButton>
         </div>
       ) : (
         <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-center text-xs font-black text-emerald-700">

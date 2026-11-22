@@ -133,6 +133,7 @@ export function MansionScreen() {
                         </span>
                       )}
                     </p>
+                    <p className="mt-1 text-[10px] font-bold leading-4 text-stone-500">{t("unlock_free_note")}</p>
                     <p className="mt-1 text-[10px] font-bold leading-4 text-stone-500">{t("locked_how")}</p>
                     <span className="absolute bottom-0 start-10 size-3 -translate-y-1/2 rotate-45 border-b-2 border-e-2 border-stone-200 bg-white" aria-hidden />
                   </div>
@@ -146,17 +147,27 @@ export function MansionScreen() {
                         setLockInfo(room.id);
                         return;
                       }
-                      const ok = unlockRoom(room.id);
-                      if (ok) {
+                      if (unlockRoom(room.id)) {
                         sfx.unlock();
                         toast(t("room_unlocked_toast"), "success");
                       }
                     }}
-                    className="mt-2 flex min-h-11 w-fit items-center gap-1 rounded-2xl border border-amber-300 bg-amber-100 px-3 text-sm font-black text-amber-800 active:scale-95"
+                    className={cn(
+                      "mt-2 flex min-h-11 items-center gap-1 rounded-2xl px-3 text-sm font-black transition-transform active:scale-95",
+                      starBalance >= room.unlockStars
+                        ? "bg-gradient-to-b from-emerald-400 to-teal-500 text-white shadow-[0_3px_0_#0f766e]"
+                        : "border border-amber-300 bg-amber-100 text-amber-800",
+                    )}
                   >
-                    <StarIcon className="size-4" filled />
-                    {n(room.unlockStars)}
-                    <span className="ms-1 text-[10px] font-bold text-amber-600">· {t("locked_tap_hint")}</span>
+                    {starBalance >= room.unlockStars ? (
+                      <>{t("unlock_now")}</>
+                    ) : (
+                      <>
+                        <StarIcon className="size-4" filled />
+                        {n(room.unlockStars)}
+                        <span className="ms-1 text-[10px] font-bold text-amber-600">· {t("locked_tap_hint")}</span>
+                      </>
+                    )}
                   </button>
                 </>
               ) : (
@@ -188,6 +199,24 @@ export function MansionScreen() {
               {t(ROOM_BY_ID.get(lockInfo)!.nameKey)} — {n(ROOM_BY_ID.get(lockInfo)!.unlockStars)} {t("stars")}
             </p>
           )}
+          <p className="mt-2 text-xs font-bold leading-5 text-stone-500">{t("unlock_free_note")}</p>
+          {lockInfo &&
+            !unlockedRooms.includes(lockInfo) &&
+            starBalance >= ROOM_BY_ID.get(lockInfo)!.unlockStars && (
+              <GameButton
+                variant="secondary"
+                className="mt-3 w-full"
+                onClick={() => {
+                  if (unlockRoom(lockInfo)) {
+                    sfx.unlock();
+                    toast(t("room_unlocked_toast"), "success");
+                  }
+                  setLockInfo(null);
+                }}
+              >
+                {t("unlock_now")}
+              </GameButton>
+            )}
           <GameButton className="mt-4 w-full" onClick={() => setLockInfo(null)}>
             {t("close")}
           </GameButton>

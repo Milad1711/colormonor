@@ -9,11 +9,13 @@ import {
   ROOM_BY_ID,
   switchCost,
   variantPrice,
+  slotPlaceKey,
   VARIANT_NAME_KEYS,
   type ItemCategory,
+  type RoomSlot,
 } from "@/game/decor";
 import { sfx } from "@/game/audio";
-import { BackButton, CoinBadge, LockIcon, useT } from "./UiBits";
+import { BackButton, CoinBadge, GameButton, LockIcon, StarIcon, useT } from "./UiBits";
 import { DecorPreview } from "./DecorArt";
 import { Modal } from "./Modal";
 import { WheelEntryButton, PacksEntryButton } from "./LuckyWheel";
@@ -27,15 +29,21 @@ const SLOT_FOR_ITEM = new Map<string, string>();
 ROOMS.forEach((room) => room.slots.forEach((slot) => SLOT_FOR_ITEM.set(slot.item, slot.id)));
 const ROOM_FOR_SLOT = new Map<string, string>();
 ROOMS.forEach((room) => room.slots.forEach((slot) => ROOM_FOR_SLOT.set(slot.id, room.id)));
+/** slot id -> full slot definition (for exact placement labels) */
+const SLOT_BY_ID = new Map<string, RoomSlot>();
+ROOMS.forEach((room) => room.slots.forEach((slot) => SLOT_BY_ID.set(slot.id, slot)));
 
 export function ShopScreen() {
   const { t, n } = useT();
   const coins = useGame((s) => s.coins);
+  const starBalance = useGame((s) => s.starBalance);
   const decor = useGame((s) => s.decor);
   const unlockedRooms = useGame((s) => s.unlockedRooms);
   const shopContext = useGame((s) => s.shopContext);
   const buyDecor = useGame((s) => s.buyDecor);
   const switchDecor = useGame((s) => s.switchDecor);
+  const unlockRoom = useGame((s) => s.unlockRoom);
+  const goLevels = useGame((s) => s.goLevels);
   const openRoom = useGame((s) => s.openRoom);
   const goManor = useGame((s) => s.goManor);
   const goMenu = useGame((s) => s.goMenu);
@@ -152,6 +160,8 @@ export function ShopScreen() {
         {items.map((it) => {
           const slotId = SLOT_FOR_ITEM.get(it.id)!;
           const roomId = ROOM_FOR_SLOT.get(slotId)!;
+          const roomDef = ROOM_BY_ID.get(roomId)!;
+          const slot = SLOT_BY_ID.get(slotId)!;
           const locked = !unlockedRooms.includes(roomId);
           const owned = decor[slotId];
           return (
@@ -165,6 +175,7 @@ export function ShopScreen() {
               className={cn(
                 "shop-card-3d relative flex flex-col items-center rounded-3xl border-2 bg-white/90 p-2.5 text-center shadow-[0_6px_16px_rgba(120,80,30,0.14)] backdrop-blur",
                 owned ? "border-emerald-300" : "border-amber-200",
+                locked && "border-stone-200",
                 contextItem === it.id && "ring-2 ring-orange-400",
               )}
             >
@@ -175,7 +186,16 @@ export function ShopScreen() {
               )}
               <DecorPreview item={it.id} variant={owned ? owned.variant : 0} className="h-24 w-full" />
               <span className="mt-1 line-clamp-1 text-sm font-black text-stone-700">{t("item_" + it.id)}</span>
-              {owned ? (
+              {/* exactly where this item is installed — answers "what goes where" */}
+              <span className="mt-0.5 line-clamp-1 text-[10px] font-bold text-stone-400">
+                {t(roomDef.nameKey)} · {t(slotPlaceKey(slot))}
+              </span>
+              {locked ? (
+                <span className="mt-0.5 flex items-center gap-1 rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-black text-stone-600">
+                  <StarIcon className="size-3" filled />
+                  {n(roomDef.unlockStars)} · {t("room_locked_title")}
+                </span>
+              ) : owned ? (
                 <span className="mt-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-700">
                   {t("owned")}
                 </span>
@@ -195,16 +215,36 @@ export function ShopScreen() {
           const item = SHOP_ITEMS[detail];
           const slotId = SLOT_FOR_ITEM.get(detail)!;
           const roomId = ROOM_FOR_SLOT.get(slotId)!;
+          const roomDef = ROOM_BY_ID.get(roomId)!;
+          const slot = SLOT_BY_ID.get(slotId)!;
           const locked = !unlockedRooms.includes(roomId);
           const owned = decor[slotId];
           const price = variantPrice(detail, selVariant);
           const isSwitch = !!owned && owned.variant !== selVariant;
           const cost = isSwitch ? switchCost(price) : price;
+          const missingStars = Math.max(0, roomDef.unlockStars - starBalance);
+          const unlockNow = () => {
+            if (unlockRoom(roomId)) {
+              sfx.unlock();
+              toast(t("room_unlocked_toast"), "success");
+            } else {
+              sfx.error();
+              toast(t("not_enough_stars"), "error");
+            }
+          };
           return (
             <div>
               <h2 className="text-center text-lg font-black text-stone-800">{t("item_" + detail)}</h2>
               <p className="mt-0.5 text-center text-[11px] font-bold text-stone-500">
-                {t(ROOM_BY_ID.get(roomId)!.nameKey)} · {t(VARIANT_NAME_KEYS[selVariant])}
+                {t(roomDef.nameKey)} · {t(VARIANT_NAME_KEYS[selVariant])}
+              </p>
+              {/* exactly where it will be installed after purchase */}
+              <p className="mt-1 flex items-center justify-center gap-1 text-center text-[11px] font-black text-emerald-700">
+                <svg viewBox="0 0 24 24" className="size-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1116 0z" />
+                  <circle cx="12" cy="10" r="2.6" />
+                </svg>
+                {t("shop_placement")}: {t(slotPlaceKey(slot))}
               </p>
               <div className="pedestal-3d mx-auto mt-2 h-36 w-40 rounded-2xl bg-gradient-to-b from-amber-50 to-amber-100 p-1 shadow-inner">
                 <DecorPreview item={detail} variant={selVariant} className="h-full w-full" />
@@ -236,10 +276,36 @@ export function ShopScreen() {
               </div>
 
               {locked ? (
-                <p className="mt-3 rounded-xl bg-stone-100 p-2 text-center text-xs font-bold text-stone-500">
-                  <LockIcon className="me-1 inline size-4 align-text-bottom" />
-                  {t("room_locked_title")}
-                </p>
+                <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-center">
+                  <p className="flex items-center justify-center gap-1.5 text-xs font-black text-stone-700">
+                    <LockIcon className="size-4 shrink-0" />
+                    {t("room_locked_title")}
+                  </p>
+                  <p className="mt-1.5 flex items-center justify-center gap-1 text-[11px] font-bold leading-5 text-amber-700">
+                    <StarIcon className="size-3.5 shrink-0" filled />
+                    {t("locked_needs_before")} {n(roomDef.unlockStars)} {t("stars")} {t("locked_needs_after")}
+                    {missingStars > 0 && (
+                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-800 tabular-nums">
+                        +{n(missingStars)}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-[11px] font-bold text-stone-500 tabular-nums">
+                    {t("your_star_count")}: {n(starBalance)}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold leading-4 text-stone-400">{t("unlock_free_note")}</p>
+                  <div className="mt-2.5">
+                    {missingStars <= 0 ? (
+                      <GameButton className="w-full" onClick={unlockNow}>
+                        {t("unlock_now")}
+                      </GameButton>
+                    ) : (
+                      <GameButton variant="secondary" className="w-full" onClick={goLevels}>
+                        {t("earn_stars_go")}
+                      </GameButton>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="mt-3 flex items-center justify-center gap-3">
                   <button
