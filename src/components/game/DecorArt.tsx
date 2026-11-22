@@ -899,6 +899,519 @@ function Runner({ p, v }: { p: Palette; v: number }) {
   );
 }
 
+/* -------------------- new items (110-level campaign) -------------------- */
+
+function WallArt({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      <rect x="18" y="18" width="64" height="56" rx="4" fill={p.woodDark} stroke={STROKE} />
+      <rect x="24" y="24" width="52" height="44" fill={p.fabric} stroke={STROKE} />
+      {v === 1 ? (
+        <>
+          <circle cx="62" cy="36" r="8" fill={p.metal} />
+          <path d="M26 62 L44 44 L56 54 L70 40 L74 62 Z" fill={p.accent} opacity="0.85" />
+        </>
+      ) : v === 2 ? (
+        <>
+          <path d="M24 60 Q 38 40 52 56 T 76 44" fill="none" stroke={p.accent} strokeWidth="5" strokeLinecap="round" />
+          <circle cx="60" cy="34" r="6" fill={p.accentSoft} />
+        </>
+      ) : (
+        <>
+          <circle cx="60" cy="36" r="7" fill={p.accentSoft} />
+          <path d="M26 62 L42 48 L54 56 L68 44 L74 62 Z" fill={p.leaf} opacity="0.9" />
+        </>
+      )}
+    </g>
+  );
+}
+
+function Sconce({ p, v }: { p: Palette; v: number }) {
+  const shadeColor = v === 1 ? p.metal : v === 2 ? p.accent : p.fabric;
+  return (
+    <g>
+      <rect x="44" y="30" width="12" height="34" rx="3" fill={p.metal} stroke={STROKE} />
+      <rect x="30" y="40" width="20" height="7" rx="3" fill={p.metal} transform="rotate(24 30 40)" />
+      <path d={v === 1 ? "M28 40 L52 24 L64 44 L40 52 Z" : "M30 42 Q 42 18 62 36 L 58 46 Q 44 34 36 48 Z"} fill={shadeColor} stroke={STROKE} />
+      <circle cx="46" cy="46" r="6" fill="#FFE9A8" />
+    </g>
+  );
+}
+
+function WallShelf({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      <rect x="16" y="52" width="68" height="7" rx="3" fill={p.wood} stroke={STROKE} />
+      <path d="M22 59 L22 72 L34 59 Z" fill={p.woodDark} />
+      <path d="M78 59 L78 72 L66 59 Z" fill={p.woodDark} />
+      <rect x="22" y={v === 2 ? 26 : 30} width="14" height={v === 2 ? 26 : 22} rx="3" fill={p.accent} stroke={STROKE} />
+      <rect x="42" y="36" width="12" height="16" rx="3" fill={p.fabric} stroke={STROKE} />
+      <circle cx="64" cy="44" r="9" fill={p.leaf} stroke={STROKE} />
+    </g>
+  );
+}
+
+function WallMap({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      <rect x="14" y="14" width="72" height="60" rx="4" fill={p.woodDark} stroke={STROKE} />
+      <rect x="20" y="20" width="60" height="48" fill={v === 1 ? "#DDEAE6" : "#CFE6E4"} stroke={STROKE} />
+      <path d="M24 30 Q 36 22 46 30 T 70 26 L 74 34 Q 60 40 48 36 L 26 38 Z" fill={p.leaf} opacity="0.85" />
+      <path d="M24 52 Q 40 44 52 52 T 74 48 L 74 64 L 24 64 Z" fill={p.accent} opacity="0.7" />
+      <circle cx="62" cy="42" r="4" fill={p.accentSoft} />
+    </g>
+  );
+}
+
+function BathMirror({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {v === 2 ? (
+        <rect x="24" y="12" width="52" height="46" rx="6" fill={p.metal} stroke={STROKE} />
+      ) : (
+        <circle cx="50" cy="36" r="26" fill={p.metal} stroke={STROKE} />
+      )}
+      <rect x="28" y="18" width="44" height="34" fill="#D6ECF4" />
+      <circle cx="50" cy="36" r="22" fill="#D6ECF4" />
+      <path d="M38 26 C 42 21, 48 19, 54 19" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <rect x="30" y="66" width="40" height="6" rx="3" fill={p.fabric} stroke={STROKE} />
+      <circle cx="58" cy="62" r="5" fill={p.accent} />
+    </g>
+  );
+}
+
+function TowelRack({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      <rect x="14" y="26" width="72" height="6" rx="3" fill={p.metal} stroke={STROKE} />
+      <rect x="14" y="30" width="6" height="26" rx="3" fill={p.metal} />
+      <rect x="80" y="30" width="6" height="26" rx="3" fill={p.metal} />
+      <path d="M26 32 h18 v40 q -9 6 -18 0 Z" fill={v === 1 ? p.accent : p.fabric} stroke={STROKE} />
+      <path d="M56 32 h16 v32 q -8 5 -16 0 Z" fill={v === 1 ? p.fabric : p.accent} stroke={STROKE} />
+      <line x1="30" y1="40" x2="30" y2="62" stroke={STROKE} strokeWidth="1.5" />
+      <line x1="62" y1="40" x2="62" y2="56" stroke={STROKE} strokeWidth="1.5" />
+    </g>
+  );
+}
+
+function HangingPlant({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      <line x1="50" y1="0" x2="50" y2="34" stroke={p.metal} strokeWidth="2.5" />
+      <path d="M40 34 L60 34 L56 52 L44 52 Z" fill={v === 1 ? p.metal : p.woodDark} stroke={STROKE} />
+      <rect x="38" y="32" width="24" height="5" rx="2.5" fill={v === 1 ? p.accent : p.leafDark} stroke={STROKE} />
+      <path d="M50 52 C 46 66, 44 76, 46 88 M50 52 C 56 64, 60 72, 58 84 M50 52 C 40 62, 34 70, 36 80" fill="none" stroke={p.leafDark} strokeWidth="3" strokeLinecap="round" />
+      <ellipse cx="46" cy="90" rx="8" ry="6" fill={p.leaf} />
+      <ellipse cx="59" cy="86" rx="7" ry="5" fill={v === 2 ? p.accent : p.leaf} />
+      <ellipse cx="35" cy="82" rx="6" ry="5" fill={p.leaf} />
+      <circle cx="52" cy="76" r="3.5" fill={p.accentSoft} />
+    </g>
+  );
+}
+
+function Globe({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 20)}
+      <ellipse cx="50" cy="88" rx="16" ry="5" fill={p.woodDark} />
+      <rect x="47" y="60" width="6" height="26" fill={p.wood} />
+      <circle cx="50" cy="42" r="24" fill={v === 1 ? "#BFE0E8" : "#5A8FDE"} stroke={STROKE} strokeWidth="2" />
+      <path d="M32 36 Q 40 26 50 32 T 68 30 Q 70 40 62 44 Q 50 40 40 46 Z" fill={p.leaf} opacity="0.9" />
+      <path d="M34 54 Q 44 48 54 54 T 66 52" fill="none" stroke={p.accent} strokeWidth="4" opacity="0.7" />
+      <path d="M28 52 A 24 24 0 0 1 50 18" fill="none" stroke={p.metal} strokeWidth="2.5" opacity="0.8" />
+    </g>
+  );
+}
+
+function Fridge({ p, v }: { p: Palette; v: number }) {
+  const body = v === 1 ? p.metal : v === 2 ? p.accentSoft : p.fabric;
+  return (
+    <g>
+      {shade(96, 50, 30)}
+      <rect x="26" y="14" width="48" height="76" rx="7" fill={body} stroke={STROKE} />
+      <line x1="26" y1="42" x2="74" y2="42" stroke={STROKE} strokeWidth="2.5" />
+      <rect x="62" y="20" width="4" height="16" rx="2" fill={p.metal} />
+      <rect x="62" y="48" width="4" height="26" rx="2" fill={p.metal} />
+      <circle cx="38" cy="28" r="4" fill={p.accent} />
+      <circle cx="48" cy="30" r="4" fill={p.leaf} />
+      <circle cx="44" cy="22" r="3.5" fill={p.accentSoft} />
+    </g>
+  );
+}
+
+function Dresser({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 36)}
+      <rect x="14" y="36" width="72" height="44" rx="6" fill={p.wood} stroke={STROKE} />
+      <rect x="10" y="30" width="80" height="9" rx="4" fill={p.woodDark} stroke={STROKE} />
+      {v === 1 ? (
+        <>
+          <rect x="20" y="44" width="60" height="12" rx="3" fill={p.fabric} />
+          <rect x="20" y="62" width="60" height="12" rx="3" fill={p.fabric} />
+          <circle cx="50" cy="50" r="2.5" fill={p.metal} />
+          <circle cx="50" cy="68" r="2.5" fill={p.metal} />
+        </>
+      ) : (
+        <>
+          <rect x="20" y="44" width="28" height="12" rx="3" fill={p.fabric} />
+          <rect x="52" y="44" width="28" height="12" rx="3" fill={p.fabric} />
+          <rect x="20" y="62" width="28" height="12" rx="3" fill={p.fabric} />
+          <rect x="52" y="62" width="28" height="12" rx="3" fill={p.fabric} />
+          <circle cx="34" cy="50" r="2.5" fill={p.metal} />
+          <circle cx="66" cy="50" r="2.5" fill={p.metal} />
+          <circle cx="34" cy="68" r="2.5" fill={p.metal} />
+          <circle cx="66" cy="68" r="2.5" fill={p.metal} />
+        </>
+      )}
+      <rect x="42" y="14" width="12" height="14" rx="3" fill={p.accent} />
+      <circle cx="48" cy="10" r="6" fill={p.leaf} />
+    </g>
+  );
+}
+
+function Workbench({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 38)}
+      <rect x="10" y="40" width="80" height="9" rx="4" fill={v === 1 ? p.metal : p.wood} stroke={STROKE} />
+      <rect x="16" y="49" width="7" height="40" fill={p.woodDark} />
+      <rect x="77" y="49" width="7" height="40" fill={p.woodDark} />
+      <rect x="18" y="66" width="64" height="6" rx="3" fill={p.woodDark} opacity="0.85" />
+      <path d="M26 40 v-8 a 8 8 0 0 1 16 0 v8 Z" fill={p.pot ?? p.woodDark} stroke={STROKE} />
+      <circle cx="34" cy="28" r="7" fill={p.leaf} />
+      <path d="M54 40 v-6 h14 v6 Z" fill={p.accent} stroke={STROKE} />
+      <circle cx="61" cy="30" r="6" fill={p.accentSoft} />
+    </g>
+  );
+}
+
+function Birdhouse({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 20)}
+      <rect x="44" y="42" width="12" height="48" rx="3" fill={p.woodDark} />
+      <ellipse cx="50" cy="90" rx="14" ry="4" fill={p.woodDark} />
+      <rect x="32" y="20" width="36" height="26" rx="3" fill={p.wood} stroke={STROKE} />
+      <path d="M28 22 L50 6 L72 22 Z" fill={v === 1 ? p.metal : p.accent} stroke={STROKE} />
+      <circle cx="50" cy="32" r="6" fill="#5A4632" />
+      <line x1="50" y1="38" x2="50" y2="44" stroke="#5A4632" strokeWidth="2.5" />
+      <path d="M78 66 q 8 -4 12 2 q -6 4 -12 -2" fill={p.leafDark} />
+      <circle cx="76" cy="64" r="4" fill={p.accent} />
+    </g>
+  );
+}
+
+function Umbrella({ p, v }: { p: Palette; v: number }) {
+  const canopy = v === 1 ? p.accent : v === 2 ? p.leaf : p.accent;
+  return (
+    <g>
+      {shade(96, 50, 22)}
+      <ellipse cx="50" cy="90" rx="16" ry="4.5" fill={p.woodDark} />
+      <rect x="47" y="30" width="6" height="60" rx="3" fill={p.metal} />
+      <path d="M8 44 Q 50 8 92 44 L 84 52 Q 50 22 16 52 Z" fill={canopy} stroke={STROKE} />
+      {v !== 1 ? (
+        <>
+          <path d="M22 46 Q 50 24 50 24 Q 50 24 78 46" fill="none" stroke={p.fabric} strokeWidth="5" opacity="0.7" />
+          <circle cx="50" cy="14" r="4" fill={p.accentSoft} />
+        </>
+      ) : (
+        <path d="M36 40 Q 50 20 64 40" fill="none" stroke={p.fabric} strokeWidth="5" opacity="0.7" />
+      )}
+    </g>
+  );
+}
+
+function CoatRack({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 22)}
+      <ellipse cx="50" cy="90" rx="15" ry="4.5" fill={p.woodDark} />
+      <rect x="47" y="18" width="6" height="72" rx="3" fill={p.woodDark} />
+      <path d="M50 20 L30 30 M50 20 L70 30 M50 20 L50 8" stroke={p.wood} strokeWidth="5" strokeLinecap="round" />
+      <circle cx="30" cy="31" r="4" fill={p.accent} />
+      <circle cx="70" cy="31" r="4" fill={p.accent} />
+      <circle cx="50" cy="8" r="4" fill={p.accent} />
+      <path d="M56 34 q 14 4 12 26 q -2 14 -12 14 q -8 -2 -8 -18 Z" fill={v === 1 ? p.accent : p.fabric} stroke={STROKE} />
+      <path d="M60 70 q 4 12 0 18" fill="none" stroke={STROKE} strokeWidth="1.5" />
+    </g>
+  );
+}
+
+function Bathtub({ p, v }: { p: Palette; v: number }) {
+  const tub = v === 1 ? "#E8EAED" : v === 2 ? p.fabric : "#F6F3EA";
+  return (
+    <g>
+      {shade(96, 50, 40)}
+      <path d="M10 42 h80 v20 q 0 26 -18 26 h-44 q -18 0 -18 -26 Z" fill={tub} stroke={STROKE} />
+      <rect x="6" y="36" width="88" height="12" rx="6" fill={v === 1 ? p.metal : "#ECE7DB"} stroke={STROKE} />
+      <rect x="14" y="44" width="72" height="8" rx="4" fill="#9FDCEC" opacity="0.9" />
+      <circle cx="32" cy="46" r="5" fill="#FFFFFF" />
+      <circle cx="48" cy="48" r="4" fill="#FFFFFF" />
+      <circle cx="62" cy="45" r="3.5" fill="#FFFFFF" />
+      <rect x="86" y="20" width="6" height="20" rx="3" fill={p.metal} />
+      <path d="M86 22 h-14 v6" fill="none" stroke={p.metal} strokeWidth="5" strokeLinecap="round" />
+    </g>
+  );
+}
+
+function Sink({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 26)}
+      <path d="M38 62 h24 l-3 28 h-18 Z" fill={p.fabric} stroke={STROKE} />
+      <ellipse cx="50" cy="60" rx="26" ry="10" fill={v === 1 ? p.metal : "#F6F3EA"} stroke={STROKE} />
+      <ellipse cx="50" cy="58" rx="19" ry="6.5" fill="#D9EEF2" />
+      <rect x="44" y="30" width="6" height="22" rx="3" fill={p.metal} />
+      <path d="M44 32 h-10 v8" fill="none" stroke={p.metal} strokeWidth="5" strokeLinecap="round" />
+      <circle cx="34" cy="42" r="2.5" fill="#7FD4E8" />
+    </g>
+  );
+}
+
+function Vase({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 16)}
+      <path d="M38 58 h24 l-4 34 h-16 Z" fill={v === 1 ? p.metal : v === 2 ? p.accent : p.cushion} stroke={STROKE} />
+      <ellipse cx="50" cy="58" rx="14" ry="4" fill={v === 1 ? p.accentSoft : p.fabric} stroke={STROKE} />
+      <path d="M44 58 q -2 -14 6 -22 M50 58 q 0 -18 0 -24 M56 58 q 3 -12 -3 -20" fill="none" stroke={p.leafDark} strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="50" cy="30" r="7" fill={v === 2 ? p.accent : p.accentSoft} />
+      <circle cx="44" cy="34" r="6" fill={p.leaf} />
+      <circle cx="58" cy="36" r="5.5" fill={p.metal} />
+    </g>
+  );
+}
+
+function Piano({ p, v }: { p: Palette; v: number }) {
+  const body = v === 1 ? p.woodDark : v === 2 ? p.wood : p.woodDark;
+  return (
+    <g>
+      {shade(96, 50, 40)}
+      <rect x="14" y="14" width="72" height="60" rx="6" fill={body} stroke={STROKE} />
+      <rect x="20" y="20" width="60" height="18" rx="3" fill={p.accent} opacity="0.25" />
+      <rect x="14" y="60" width="84" height="10" rx="3" fill={p.wood} stroke={STROKE} />
+      <rect x="18" y="63" width="72" height="6" rx="2" fill="#FDF8EC" />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <rect key={i} x={22 + i * 12} y="63" width="4" height="4" fill="#22222A" />
+      ))}
+      <rect x="30" y="80" width="7" height="14" rx="2" fill={p.woodDark} />
+      <rect x="63" y="80" width="7" height="14" rx="2" fill={p.woodDark} />
+    </g>
+  );
+}
+
+function Cello({ p, v }: { p: Palette; v: number }) {
+  const body = v === 1 ? p.accent : p.wood;
+  return (
+    <g>
+      {shade(96, 50, 22)}
+      <ellipse cx="50" cy="92" rx="12" ry="4" fill={p.woodDark} />
+      <rect x="48" y="80" width="4" height="12" fill={p.metal} />
+      <path d="M36 78 q -6 -12 0 -22 q 4 -8 14 -8 q 10 0 14 8 q 6 10 0 22 q -4 8 -14 8 q -10 0 -14 -8 Z" fill={body} stroke={STROKE} />
+      <path d="M50 48 v-34" stroke={p.woodDark} strokeWidth="5" />
+      <circle cx="50" cy="12" r="5" fill={p.woodDark} />
+      <rect x="42" y="62" width="16" height="5" rx="2" fill={p.woodDark} />
+      <path d="M46 48 v30 M50 48 v30 M54 48 v30" stroke="#D9CFA8" strokeWidth="1.4" />
+    </g>
+  );
+}
+
+function MusicStand({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 20)}
+      <path d="M38 92 L50 62 L62 92 M30 88 L50 62 L70 88" fill="none" stroke={p.metal} strokeWidth="4" strokeLinecap="round" />
+      <rect x="47" y="36" width="6" height="28" fill={p.metal} />
+      <rect x="28" y="12" width="44" height="30" rx="3" fill={v === 1 ? p.accent : p.metal} stroke={STROKE} transform="rotate(-8 50 27)" />
+      <rect x="33" y="16" width="34" height="22" fill={p.fabric} transform="rotate(-8 50 27)" />
+      <circle cx="44" cy="26" r="3" fill={p.woodDark} />
+      <circle cx="52" cy="22" r="3" fill={p.woodDark} />
+      <path d="M44 29 v6 l6 -2 v-6" fill="none" stroke={p.woodDark} strokeWidth="1.5" />
+    </g>
+  );
+}
+
+function Desk({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 40)}
+      <rect x="8" y="38" width="84" height="9" rx="4" fill={p.wood} stroke={STROKE} />
+      <rect x="14" y="47" width="26" height="30" rx="3" fill={p.woodDark} stroke={STROKE} />
+      <rect x="18" y="52" width="18" height="8" rx="2" fill={p.fabric} />
+      <rect x="18" y="64" width="18" height="8" rx="2" fill={p.fabric} />
+      <rect x="70" y="47" width="8" height="42" fill={p.woodDark} />
+      <rect x="84" y="47" width="8" height="42" fill={p.woodDark} />
+      <rect x="46" y="32" width="22" height="6" rx="2" fill="#FDF8EC" stroke={STROKE} />
+      <rect x="44" y="26" width="16" height="6" rx="2" fill={v === 1 ? p.accent : p.leaf} stroke={STROKE} />
+      <rect x="66" y="22" width="6" height="16" rx="3" fill={p.metal} />
+      <path d="M66 24 L58 16 h12 Z" fill={v === 2 ? p.accent : p.accentSoft} />
+    </g>
+  );
+}
+
+function OfficeChair({ p, v }: { p: Palette; v: number }) {
+  const fabric = v === 1 ? p.metal : p.accent;
+  return (
+    <g>
+      {shade(96, 50, 24)}
+      <rect x="28" y="18" width="44" height="26" rx="6" fill={fabric} stroke={STROKE} />
+      <rect x="36" y="24" width="28" height="8" rx="3" fill={p.fabric} />
+      <rect x="34" y="44" width="32" height="10" rx="4" fill={fabric} stroke={STROKE} />
+      <rect x="47" y="54" width="6" height="18" fill={p.metal} />
+      <path d="M34 78 L50 70 L66 78 M38 84 L50 72 L62 84" fill="none" stroke={p.metal} strokeWidth="4" strokeLinecap="round" />
+      <circle cx="34" cy="80" r="3.5" fill={p.woodDark} />
+      <circle cx="66" cy="80" r="3.5" fill={p.woodDark} />
+      <circle cx="38" cy="86" r="3.5" fill={p.woodDark} />
+      <circle cx="62" cy="86" r="3.5" fill={p.woodDark} />
+    </g>
+  );
+}
+
+function Chest({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 30)}
+      <rect x="18" y="36" width="64" height="42" rx="5" fill={p.wood} stroke={STROKE} />
+      <path d="M18 38 Q 50 20 82 38 v10 H18 Z" fill={v === 1 ? p.metal : p.woodDark} stroke={STROKE} />
+      <rect x="26" y="36" width="7" height="42" fill={v === 1 ? p.metal : p.accent} opacity="0.85" />
+      <rect x="67" y="36" width="7" height="42" fill={v === 1 ? p.metal : p.accent} opacity="0.85" />
+      <rect x="45" y="46" width="10" height="12" rx="2" fill={p.accent} stroke={STROKE} />
+      <circle cx="50" cy="50" r="2" fill={p.woodDark} />
+    </g>
+  );
+}
+
+function Boxes({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 30)}
+      <rect x="18" y="52" width="44" height="36" rx="3" fill={p.wood} stroke={STROKE} />
+      <line x1="18" y1="64" x2="62" y2="64" stroke={STROKE} strokeWidth="2" />
+      <rect x="42" y="26" width="34" height="28" rx="3" fill={p.woodDark} stroke={STROKE} transform="rotate(4 59 40)" />
+      <rect x="22" y="24" width="22" height="18" rx="3" fill={v === 1 ? p.accent : p.fabric} stroke={STROKE} transform="rotate(-6 33 33)" />
+    </g>
+  );
+}
+
+function Hay({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 34)}
+      <rect x="12" y="46" width="76" height="36" rx="10" fill={v === 1 ? p.cushion : "#E3C25F"} stroke={STROKE} />
+      <line x1="30" y1="46" x2="30" y2="82" stroke="#B89044" strokeWidth="4" />
+      <line x1="70" y1="46" x2="70" y2="82" stroke="#B89044" strokeWidth="4" />
+      <path d="M12 58 h76 M12 70 h76" stroke="#D4AE52" strokeWidth="2" opacity="0.8" />
+      <path d="M16 40 q 10 -8 20 0 M40 38 q 10 -8 20 0 M64 40 q 10 -8 18 0" fill="none" stroke={v === 2 ? p.accent : "#E3C25F"} strokeWidth="3" strokeLinecap="round" />
+    </g>
+  );
+}
+
+function Saddle({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 26)}
+      <path d="M30 88 L36 50 M70 88 L64 50" stroke={p.woodDark} strokeWidth="5" strokeLinecap="round" />
+      <rect x="30" y="48" width="40" height="7" rx="3" fill={p.woodDark} />
+      <path d="M28 48 q 22 -18 44 0 q 2 10 -6 12 h-32 q -8 -2 -6 -12 Z" fill={v === 1 ? p.metal : p.fabric} stroke={STROKE} />
+      <circle cx="50" cy="34" r="7" fill={p.woodDark} />
+      <path d="M32 58 l-6 14 h8 M68 58 l6 14 h-8" fill="none" stroke={v === 1 ? p.metal : p.accent} strokeWidth="3.5" strokeLinecap="round" />
+    </g>
+  );
+}
+
+function Bucket({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 18)}
+      <path d="M34 44 h32 l-4 42 h-24 Z" fill={v === 1 ? p.accent : p.metal} stroke={STROKE} />
+      <ellipse cx="50" cy="44" rx="16" ry="5" fill={v === 1 ? p.accentSoft : p.fabric} stroke={STROKE} />
+      <ellipse cx="50" cy="45" rx="11" ry="3.5" fill="#7FD4E8" />
+      <path d="M36 44 A 16 14 0 0 1 64 44" fill="none" stroke={p.woodDark} strokeWidth="3.5" />
+    </g>
+  );
+}
+
+function Horse({ p, v }: { p: Palette; v: number }) {
+  const coat = v === 1 ? p.metal : v === 2 ? p.accent : p.wood;
+  return (
+    <g>
+      {shade(96, 50, 34)}
+      <rect x="22" y="36" width="52" height="24" rx="11" fill={coat} stroke={STROKE} />
+      <rect x="28" y="58" width="7" height="30" rx="3" fill={coat} />
+      <rect x="40" y="58" width="7" height="32" rx="3" fill={coat} />
+      <rect x="52" y="58" width="7" height="32" rx="3" fill={coat} />
+      <rect x="62" y="58" width="7" height="30" rx="3" fill={coat} />
+      <path d="M66 40 q 12 -4 14 6 q 1 8 -8 10 l-8 0 Z" fill={coat} stroke={STROKE} />
+      <rect x="72" y="42" width="12" height="9" rx="4" fill={p.fabric} />
+      <circle cx="86" cy="46" r="2" fill="#5A4632" />
+      <path d="M68 34 l4 -8 4 8 M74 34 l4 -7 3 7" fill={p.woodDark} />
+      <path d="M24 38 q -10 2 -12 16 q -2 8 4 8" fill="none" stroke={p.woodDark} strokeWidth="5" strokeLinecap="round" />
+      <path d="M40 34 q -4 12 0 22" fill="none" stroke={p.woodDark} strokeWidth="4" strokeLinecap="round" />
+      <circle cx="74" cy="44" r="2.2" fill="#2E2418" />
+    </g>
+  );
+}
+
+function FruitTree({ p, v }: { p: Palette; v: number }) {
+  const fruit = v === 1 ? p.accent : "#E2483C";
+  return (
+    <g>
+      {shade(96, 50, 30)}
+      <path d="M46 90 q -1 -24 -3 -34 h14 q -2 10 -3 34 Z" fill={p.woodDark} stroke={STROKE} />
+      <circle cx="50" cy="36" r="28" fill={p.leaf} stroke={STROKE} />
+      <circle cx="34" cy="44" r="15" fill={p.leafDark} />
+      <circle cx="66" cy="44" r="14" fill={p.leaf} />
+      <circle cx="38" cy="36" r="4.5" fill={fruit} />
+      <circle cx="56" cy="28" r="4.5" fill={fruit} />
+      <circle cx="64" cy="46" r="4.5" fill={v === 2 ? p.accentSoft : fruit} />
+      <circle cx="44" cy="52" r="4.5" fill={fruit} />
+    </g>
+  );
+}
+
+function FruitBasket({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 22)}
+      <path d="M30 52 h40 l-5 38 h-30 Z" fill={p.wood} stroke={STROKE} />
+      <line x1="30" y1="64" x2="70" y2="64" stroke={STROKE} strokeWidth="2" />
+      <line x1="32" y1="76" x2="68" y2="76" stroke={STROKE} strokeWidth="2" />
+      <ellipse cx="50" cy="52" rx="20" ry="5" fill={p.woodDark} stroke={STROKE} />
+      <circle cx="42" cy="46" r="8" fill="#E2483C" stroke={STROKE} />
+      <circle cx="58" cy="46" r="8" fill={v === 1 ? p.accent : "#F5B301"} stroke={STROKE} />
+      <circle cx="50" cy="38" r="8" fill={v === 2 ? p.leaf : "#E2725B"} stroke={STROKE} />
+      <path d="M34 48 A 20 18 0 0 1 66 48" fill="none" stroke={p.woodDark} strokeWidth="3.5" />
+    </g>
+  );
+}
+
+function Ladder({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 26)}
+      <path d="M30 92 L42 10 M70 92 L58 10" stroke={v === 1 ? p.metal : p.wood} strokeWidth="6" strokeLinecap="round" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <line key={i} x1={36 - i * 1.6} y1={24 + i * 14} x2={64 + i * 1.6} y2={24 + i * 14} stroke={p.woodDark} strokeWidth="5" strokeLinecap="round" />
+      ))}
+    </g>
+  );
+}
+
+function Crate({ p, v }: { p: Palette; v: number }) {
+  return (
+    <g>
+      {shade(96, 50, 26)}
+      <rect x="22" y="46" width="56" height="42" rx="4" fill={p.wood} stroke={STROKE} />
+      <line x1="22" y1="60" x2="78" y2="60" stroke={STROKE} strokeWidth="2" />
+      <line x1="22" y1="74" x2="78" y2="74" stroke={STROKE} strokeWidth="2" />
+      <circle cx="38" cy="40" r="7.5" fill="#E2483C" stroke={STROKE} />
+      <circle cx="54" cy="40" r="7.5" fill={v === 1 ? p.accent : "#F5B301"} stroke={STROKE} />
+      <circle cx="46" cy="32" r="7.5" fill={v === 2 ? p.leaf : "#E2725B"} stroke={STROKE} />
+    </g>
+  );
+}
+
 /* ------------------------------ dispatcher ------------------------------ */
 
 const ART: Record<string, (props: { p: Palette; v: number }) => React.ReactNode> = {
@@ -938,6 +1451,65 @@ const ART: Record<string, (props: { p: Palette; v: number }) => React.ReactNode>
   mirror: Mirror,
   runner: Runner,
   hall_plant: HallPlant,
+
+  /* ---- 110-level campaign additions ---- */
+  wall_art: WallArt,
+  hall_painting: WallArt,
+  sconce: Sconce,
+  wall_lamp: Sconce,
+  kitchen_shelf: WallShelf,
+  wall_map: WallMap,
+  bath_mirror: BathMirror,
+  towel_rack: TowelRack,
+  green_hanger: HangingPlant,
+  globe: Globe,
+  fridge: Fridge,
+  dresser: Dresser,
+  workbench: Workbench,
+  birdhouse: Birdhouse,
+  umbrella: Umbrella,
+  coat_rack: CoatRack,
+  bathtub: Bathtub,
+  sink: Sink,
+  bath_mat: Rug,
+  bath_plant: Planter,
+  dining_table: KitchenTable,
+  dining_chair: KitchenChair,
+  dining_sideboard: Cabinet,
+  dining_chandelier: Chandelier,
+  dining_vase: Vase,
+  dining_carpet: Rug,
+  piano: Piano,
+  cello: Cello,
+  music_stand: MusicStand,
+  music_lamp: FloorLamp,
+  music_carpet: Rug,
+  desk: Desk,
+  office_chair: OfficeChair,
+  study_lamp: FloorLamp,
+  office_bookcase: Bookcase,
+  study_rug: Rug,
+  attic_chest: Chest,
+  attic_boxes: Boxes,
+  attic_lamp: PendantLight,
+  attic_carpet: Rug,
+  attic_plant: HallPlant,
+  gazebo_seat: Bench,
+  gazebo_table: CoffeeTable,
+  gazebo_lantern: GardenLamp,
+  gazebo_plants: GardenPlanter,
+  guest_bed: Bed,
+  guest_table: KitchenTable,
+  guest_lamp: BedsideLamp,
+  guest_rug: Rug,
+  stable_horse: Horse,
+  stable_hay: Hay,
+  stable_saddle: Saddle,
+  stable_bucket: Bucket,
+  fruit_tree: FruitTree,
+  fruit_basket: FruitBasket,
+  orchard_ladder: Ladder,
+  orchard_crate: Crate,
 };
 
 export function DecorArt({

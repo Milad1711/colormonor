@@ -41,6 +41,15 @@ const SHELLS: Record<string, RoomShell> = {
   greenhouse: { mode: "greenhouse", wall: 0xdff2fb, wallAlt: 0x9fb8a8, floor: 0xb8a88f },
   garden: { mode: "garden", wall: 0xa8d8a0, wallAlt: 0x8bc98a, floor: 0x9ccf8e },
   hallway: { mode: "indoor", wall: 0xf3e8d0, wallAlt: 0xebd7b8, floor: 0xb98a55 },
+  bathroom: { mode: "indoor", wall: 0xe7f1f2, wallAlt: 0xc3dde0, floor: 0xd9e2df, windowX: -1.6, windowW: 1.1, windowH: 1.3 },
+  dining: { mode: "indoor", wall: 0xf7ecd8, wallAlt: 0xecd6b4, floor: 0xd2a878, windowX: 1.4, windowW: 1.3, windowH: 1.55 },
+  music: { mode: "indoor", wall: 0xeadfe9, wallAlt: 0xd9c9dd, floor: 0xb98a55, windowX: -1.9, windowW: 1.15, windowH: 1.45 },
+  study: { mode: "indoor", wall: 0xe6dcc4, wallAlt: 0xd9c9a4, floor: 0xa97e4f, windowX: 2.0, windowW: 1.1, windowH: 1.4 },
+  attic: { mode: "indoor", wall: 0xecdcc0, wallAlt: 0xdfc9a2, floor: 0xb08a5e, windowX: 0, windowW: 1.0, windowH: 1.2 },
+  gazebo: { mode: "garden", wall: 0xa8d8a0, wallAlt: 0x8bc98a, floor: 0xa2d18d },
+  guesthouse: { mode: "indoor", wall: 0xf5e9d2, wallAlt: 0xead4b0, floor: 0xc99c6b, windowX: 1.6, windowW: 1.15, windowH: 1.4 },
+  stable: { mode: "indoor", wall: 0xe8d6b4, wallAlt: 0xd9bd8e, floor: 0xb59a72 },
+  orchard: { mode: "garden", wall: 0xa8d8a0, wallAlt: 0x8bc98a, floor: 0x93c684 },
 };
 
 const ROOM_W = 7.2;
@@ -53,6 +62,9 @@ const HANG_H: Record<string, number> = {
   hall_chandelier: 1.4,
   pendant_light: 1.15,
   grow_lamp: 1.15,
+  dining_chandelier: 1.05,
+  attic_lamp: 0.9,
+  green_hanger: 0.9,
 };
 
 interface SlotNode {
@@ -68,14 +80,20 @@ interface RoomScene3DProps {
   roomId: string;
   decor: Record<string, { variant: number }>;
   onSlotTap: (slotId: string) => void;
+  /**
+   * Reports the on-screen x position (%) of every EMPTY slot, projected
+   * from the live 3D camera — so "go to shop" buttons and slot chips can
+   * sit EXACTLY beneath the spot they point at, even while orbiting.
+   */
+  onSlotPositions?: (positions: Record<string, number>) => void;
   className?: string;
 }
 
-export function RoomScene3D({ roomId, decor, onSlotTap, className }: RoomScene3DProps) {
+export function RoomScene3D({ roomId, decor, onSlotTap, onSlotPositions, className }: RoomScene3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const propsRef = useRef({ decor, onSlotTap });
+  const propsRef = useRef({ decor, onSlotTap, onSlotPositions });
   useEffect(() => {
-    propsRef.current = { decor, onSlotTap };
+    propsRef.current = { decor, onSlotTap, onSlotPositions };
   });
 
   const apiRef = useRef<{ rebuildDecor: (d: Record<string, { variant: number }>) => void } | null>(null);
@@ -419,6 +437,32 @@ export function RoomScene3D({ roomId, decor, onSlotTap, className }: RoomScene3D
     const camTarget = new THREE.Vector3(0, 1.15, 0);
     const camBase = new THREE.Vector3(0, 2.6, 6.2);
 
+    // live projection of empty-slot screen positions for the parent UI
+    const projVec = new THREE.Vector3();
+    let lastReport = 0;
+    const lastMap: Record<string, number> = {};
+    const reportPositions = (now: number) => {
+      if (now - lastReport < 0.28) return;
+      lastReport = now;
+      const cb = propsRef.current.onSlotPositions;
+      if (!cb) return;
+      let changed = false;
+      const out: Record<string, number> = {};
+      for (const s of slotsRef.current) {
+        if (s.owned) continue;
+        s.anchor.getWorldPosition(projVec);
+        projVec.project(camera);
+        const xp = Math.round(Math.min(94, Math.max(6, (projVec.x * 0.5 + 0.5) * 100)));
+        out[s.slotId] = xp;
+        if (Math.abs((lastMap[s.slotId] ?? -99) - xp) > 1) changed = true;
+      }
+      if (changed || Object.keys(lastMap).length !== Object.keys(out).length) {
+        for (const k of Object.keys(lastMap)) delete lastMap[k];
+        Object.assign(lastMap, out);
+        cb(out);
+      }
+    };
+
     const tick = () => {
       if (!running) return;
       raf = requestAnimationFrame(tick);
@@ -448,6 +492,7 @@ export function RoomScene3D({ roomId, decor, onSlotTap, className }: RoomScene3D
         }
       }
 
+      reportPositions(elapsed);
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(tick);

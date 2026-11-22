@@ -165,8 +165,9 @@ export function Mansion3D({
       wings.push({ box, roof, x });
     }
 
-    // windows — lit order matches the 2D facade:
-    // 0 tower balcony, 1 upper-L, 2 upper-R, 3 lower-L, 4 lower-R, 5 wing-L, 6 wing-R
+    // windows — lit order matches the manor wings (7 originals + 5 new wings):
+    // 0 tower top, 1 upper-L, 2 upper-R, 3 lower-L, 4 lower-R, 5 wing-L, 6 wing-R,
+    // 7 tower mid, 8/9 wing small-L/R, 10 door transom, 11 upper side-L/R
     addWindow(tower, [0, 2.62, 1.07], 0, 0.52, 0.66);
     addWindow(main, [-0.92, 1.78, 1.66], 1);
     addWindow(main, [0.92, 1.78, 1.66], 2);
@@ -174,6 +175,12 @@ export function Mansion3D({
     addWindow(main, [0.92, 0.85, 1.66], 4);
     addWindow(wings[0].box, [0, 0.95, 1.06], 5, 0.46, 0.62);
     addWindow(wings[1].box, [0, 0.95, 1.06], 6, 0.46, 0.62);
+    addWindow(tower, [0, 1.05, 1.03], 7, 0.44, 0.58);
+    addWindow(wings[0].box, [0, 1.42, 1.06], 8, 0.36, 0.4);
+    addWindow(wings[1].box, [0, 1.42, 1.06], 9, 0.36, 0.4);
+    addWindow(main, [0, 1.5, 1.68], 10, 0.44, 0.26);
+    addWindow(main, [-1.5, 1.78, 1.68], 11, 0.4, 0.55);
+    addWindow(main, [1.5, 1.78, 1.68], 11, 0.4, 0.55);
 
     // flower boxes under lower windows
     for (const sx of [-1, 1]) {
@@ -226,6 +233,117 @@ export function Mansion3D({
         smokePuffs.push({ mesh: puff, mat, off: base + i * 0.33, x: cx, z: cz });
       }
     }
+
+    /* ---------------------- yard buildings (pop in when unlocked) ---------------------- */
+    const yardBuildings: Array<{ group: THREE.Group; target: number; scale: number }> = [];
+    const addYardBuilding = (build: () => THREE.Group, pos: [number, number, number]) => {
+      const g = build();
+      g.position.set(...pos);
+      g.scale.setScalar(0.001);
+      g.visible = false;
+      scene.add(track(g));
+      yardBuildings.push({ group: g, target: 0, scale: 0.001 });
+    };
+
+    const buildYardGazebo = () => {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.12, 0.2, 6), toonMat(0xdcc294, gradient));
+      base.position.y = 0.1;
+      g.add(base);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.5, 8), toonMat(WOOD, gradient));
+        post.position.set(Math.cos(a) * 0.9, 0.95, Math.sin(a) * 0.9);
+        g.add(post);
+      }
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.45, 0.85, 6), toonMat(ROOF, gradient));
+      roof.position.y = 2.1;
+      roof.castShadow = true;
+      g.add(roof);
+      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), toonMat(0xf5b301, gradient));
+      finial.position.y = 2.62;
+      g.add(finial);
+      for (const a of [0.6, 3.7]) {
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+        lamp.position.set(Math.cos(a) * 0.9, 1.55, Math.sin(a) * 0.9);
+        g.add(lamp);
+      }
+      return g;
+    };
+
+    const buildYardGuesthouse = () => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, 1.5), toonMat(0xfbf0dc, gradient));
+      body.position.y = 0.55;
+      body.castShadow = true;
+      g.add(body);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.8, 4), toonMat(ROOF, gradient));
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 1.5;
+      roof.castShadow = true;
+      g.add(roof);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.72, 0.08), toonMat(0x9c6538, gradient));
+      door.position.set(-0.3, 0.36, 0.78);
+      g.add(door);
+      for (const wx of [0.3, 0.66]) {
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.3), new THREE.MeshBasicMaterial({ color: 0xffd75e }));
+        win.position.set(wx, 0.62, 0.78);
+        g.add(win);
+      }
+      const chim = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.4, 8), toonMat(0x8c5b33, gradient));
+      chim.position.set(0.55, 1.55, -0.3);
+      g.add(chim);
+      return g;
+    };
+
+    const buildYardStable = () => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.25, 1.5), toonMat(0xa9713f, gradient));
+      body.position.y = 0.62;
+      body.castShadow = true;
+      g.add(body);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.75, 0.85, 4), toonMat(ROOF_DARK, gradient));
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 1.68;
+      roof.castShadow = true;
+      g.add(roof);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.08), toonMat(0x6d4426, gradient));
+      door.position.set(0, 0.46, 0.78);
+      g.add(door);
+      // white cross trim on the door (classic stable look)
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.09, 0.02), toonMat(0xf6e7c8, gradient));
+      trim.position.set(0, 0.46, 0.84);
+      trim.rotation.z = 0.55;
+      g.add(trim);
+      const hay = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), toonMat(0xe3c25f, gradient));
+      hay.position.set(1.25, 0.22, 0.5);
+      hay.scale.y = 0.7;
+      g.add(hay);
+      return g;
+    };
+
+    const buildYardOrchard = () => {
+      const g = new THREE.Group();
+      for (const [tx, tz, s] of [[-0.35, -0.2, 1], [0.4, 0.1, 0.85], [-0.05, 0.45, 0.7]] as const) {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * s, 0.12 * s, 0.75 * s, 8), toonMat(WOOD, gradient));
+        trunk.position.set(tx, 0.38 * s, tz);
+        g.add(trunk);
+        const fol = new THREE.Mesh(new THREE.SphereGeometry(0.48 * s, 12, 10), toonMat(0x6fa85f, gradient));
+        fol.position.set(tx, 0.95 * s, tz);
+        g.add(fol);
+        for (let f = 0; f < 3; f++) {
+          const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.06 * s, 8, 6), new THREE.MeshBasicMaterial({ color: [0xe2483c, 0xf5b301, 0xe2725b][f] }));
+          fruit.position.set(tx + Math.cos(f * 2.2) * 0.32 * s, 0.95 * s + Math.sin(f * 1.7) * 0.26 * s, tz + Math.sin(f * 2.6) * 0.3 * s);
+          g.add(fruit);
+        }
+      }
+      return g;
+    };
+
+    addYardBuilding(buildYardGazebo, [4.7, 0, 2.9]);
+    addYardBuilding(buildYardOrchard, [-4.8, 0, 2.7]);
+    addYardBuilding(buildYardGuesthouse, [-4.5, 0, -2.8]);
+    addYardBuilding(buildYardStable, [4.6, 0, -3.0]);
 
     /* ------------------------------ garden ------------------------------ */
     // trees
@@ -323,10 +441,14 @@ export function Mansion3D({
     const LIT = new THREE.Color(0xffd75e);
     const DIM = new THREE.Color(0xbfe3f2);
     const applyLighting = () => {
-      const lit = Math.min(litRef.current, 7);
+      const lit = Math.min(litRef.current, 12);
       for (const w of windowSpecs) {
         (w.mesh.material as THREE.MeshBasicMaterial).color.copy(w.order < lit ? LIT : DIM);
       }
+      // yard buildings appear once their wing is unlocked (after window 11)
+      yardBuildings.forEach((b, i) => {
+        b.target = litRef.current > 12 + i ? 1 : 0;
+      });
     };
     applyLighting();
     applyLightingRef.current = applyLighting;
@@ -408,6 +530,14 @@ export function Mansion3D({
         p.mesh.position.set(p.x + Math.sin(phase * 9) * 0.08, 3.62 + phase * 1.35, p.z);
         p.mesh.scale.setScalar(0.7 + phase * 1.5);
         p.mat.opacity = 0.62 * (1 - phase) * (phase > 0.04 ? 1 : phase / 0.04);
+      }
+      // yard buildings pop in when unlocked
+      for (const b of yardBuildings) {
+        if (Math.abs(b.scale - b.target) > 0.005) {
+          b.scale += (b.target - b.scale) * Math.min(1, dt * 3.4);
+          b.group.visible = b.scale > 0.02;
+          b.group.scale.setScalar(Math.max(0.001, b.scale));
+        }
       }
       // flag wave
       flag.rotation.y = Math.sin(t * 3.2) * 0.35;

@@ -21,6 +21,7 @@ export function MansionScreen() {
   const unlockRoom = useGame((s) => s.unlockRoom);
   const openCoinStore = useGame((s) => s.openCoinStore);
   const goMenu = useGame((s) => s.goMenu);
+  const goShop = useGame((s) => s.goShop);
   const [lockInfo, setLockInfo] = useState<string | null>(null);
   /** room card currently hovered (mouse) — shows the "why locked" bubble */
   const [hoverRoom, setHoverRoom] = useState<string | null>(null);
@@ -33,6 +34,15 @@ export function MansionScreen() {
     greenhouse: { icon: "🪴", chip: "from-lime-300 to-green-400", bar: "from-lime-400 to-green-500" },
     garden: { icon: "⛲", chip: "from-teal-300 to-emerald-400", bar: "from-teal-400 to-emerald-500" },
     hallway: { icon: "🪜", chip: "from-yellow-300 to-amber-400", bar: "from-yellow-400 to-amber-500" },
+    bathroom: { icon: "🛁", chip: "from-cyan-300 to-sky-400", bar: "from-cyan-400 to-sky-500" },
+    dining: { icon: "🍽️", chip: "from-orange-300 to-red-400", bar: "from-orange-400 to-red-500" },
+    music: { icon: "🎹", chip: "from-fuchsia-300 to-purple-400", bar: "from-fuchsia-400 to-purple-500" },
+    study: { icon: "✍️", chip: "from-stone-300 to-amber-500", bar: "from-stone-400 to-amber-600" },
+    attic: { icon: "🕰️", chip: "from-stone-300 to-stone-500", bar: "from-stone-400 to-stone-600" },
+    gazebo: { icon: "⛱️", chip: "from-lime-300 to-teal-400", bar: "from-lime-400 to-teal-500" },
+    guesthouse: { icon: "🏡", chip: "from-emerald-300 to-green-500", bar: "from-emerald-400 to-green-600" },
+    stable: { icon: "🐴", chip: "from-amber-300 to-yellow-500", bar: "from-amber-400 to-yellow-600" },
+    orchard: { icon: "🍎", chip: "from-red-300 to-rose-500", bar: "from-red-400 to-rose-600" },
   };
 
   return (
@@ -171,16 +181,36 @@ export function MansionScreen() {
                   </button>
                 </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfx.tap();
-                    openRoom(room.id);
-                  }}
-                  className="mt-2 min-h-11 w-fit rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 px-4 text-sm font-black text-white shadow-[0_3px_0_#0f766e] active:translate-y-[2px] active:shadow-none"
-                >
-                  {t("enter_manor")}
-                </button>
+                <>
+                  {/* buttons sit EXACTLY beneath their room/area card */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx.tap();
+                        openRoom(room.id);
+                      }}
+                      className="min-h-11 rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 px-4 text-sm font-black text-white shadow-[0_3px_0_#0f766e] active:translate-y-[2px] active:shadow-none"
+                    >
+                      {t("enter_manor")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx.tap();
+                        goShop({ roomId: room.id });
+                      }}
+                      className="min-h-11 rounded-2xl border-2 border-amber-300 bg-amber-50 px-3.5 text-sm font-black text-amber-800 shadow-[0_3px_0_#d97706] active:translate-y-[2px] active:shadow-none"
+                    >
+                      🛒 {t("go_to_shop")}
+                    </button>
+                    {!complete && (
+                      <span className="ms-auto rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black text-orange-600 shadow-sm">
+                        {t("shop_go_hint")}
+                      </span>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           );

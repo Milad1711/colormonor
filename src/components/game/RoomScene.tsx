@@ -198,6 +198,153 @@ const SCENES: Record<string, React.ReactNode> = {
       <Planks />
     </g>
   ),
+  bathroom: (
+    <g>
+      <Wall color="#E7F1F2" />
+      {/* tile band */}
+      <rect x="0" y="0" width="400" height="120" fill="#CFE6E9" />
+      {Array.from({ length: 5 }).map((_, r) =>
+        Array.from({ length: 14 }).map((_, c) => (
+          <rect key={`${r}-${c}`} x={c * 30} y={r * 24} width="28" height="22" rx="3" fill={(r + c) % 2 ? "#BFDDE2" : "#DFF0F3"} />
+        )),
+      )}
+      <Window x={90} y={40} w={60} h={80} sky="#CBE9EE" />
+      <Floor color="#D9E2DF" />
+    </g>
+  ),
+  dining: (
+    <g>
+      <Wall color="#F7ECD8" />
+      <Window x={250} y={48} w={72} h={92} />
+      {/* arched buffet niche */}
+      <path d="M56 208 L56 100 Q 96 66 136 100 L136 208 Z" fill="#EFDCC0" stroke="#D9BF98" strokeWidth="4" />
+      <Wainscot y={176} />
+      <Floor color="#D2A878" />
+      <Planks color="#D2A878" />
+    </g>
+  ),
+  music: (
+    <g>
+      <Wall color="#EADFE9" />
+      <Window x={70} y={50} w={62} h={86} sky="#D6E9EE" />
+      {/* music-note wall motif */}
+      <g fill="#C9B3CE" opacity="0.8">
+        <circle cx="300" cy="80" r="9" />
+        <rect x="306" y="52" width="3.5" height="30" />
+        <circle cx="330" cy="96" r="9" />
+        <rect x="336" y="68" width="3.5" height="30" />
+        <path d="M309 52 h30 v10 h-30 Z" opacity="0.5" />
+      </g>
+      <Wainscot y={180} />
+      <Floor color="#B98A55" />
+      <Planks color="#B98A55" />
+    </g>
+  ),
+  study: (
+    <g>
+      <Wall color="#E6DCC4" />
+      <Window x={288} y={54} w={62} h={84} />
+      {/* book spines on backdrop shelf */}
+      <rect x="30" y="40" width="90" height="168" rx="4" fill="#A97E4F" />
+      {[0, 1, 2, 3].map((r) => (
+        <g key={r}>
+          <rect x="36" y={50 + r * 40} width="78" height="30" rx="2" fill="#8C6238" />
+          {["#E2725B", "#5A8FDE", "#55B85B", "#F5B301", "#A267D8"].map((c, i) => (
+            <rect key={i} x={40 + i * 14} y={54 + r * 40} width="8" height="22" rx="1.5" fill={c} opacity="0.9" />
+          ))}
+        </g>
+      ))}
+      <Wainscot y={182} />
+      <Floor color="#A97E4F" />
+      <Planks color="#A97E4F" />
+    </g>
+  ),
+  attic: (
+    <g>
+      {/* sloped attic walls */}
+      <path d="M0 232 L0 60 L120 0 L280 0 L400 60 L400 232 Z" fill="#ECDCC0" />
+      <path d="M0 232 L0 84 L110 30 L290 30 L400 84 L400 232 Z" fill="#E2D0AE" opacity="0.7" />
+      <Window x={168} y={54} w={64} h={84} sky="#CBE6EE" />
+      <rect x="0" y="0" width="400" height="8" fill="#B98A55" />
+      {/* wooden beams */}
+      <line x1="110" y1="30" x2="0" y2="86" stroke="#B98A55" strokeWidth="7" />
+      <line x1="290" y1="30" x2="400" y2="86" stroke="#B98A55" strokeWidth="7" />
+      <Floor color="#B08A5E" />
+      <Planks color="#B08A5E" />
+    </g>
+  ),
+  gazebo: (
+    <g>
+      <defs>
+        <linearGradient id="gz-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#9FD4EC" />
+          <stop offset="1" stopColor="#DFF2FA" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="400" height="150" fill="url(#gz-sky)" />
+      <circle cx="330" cy="44" r="20" fill="#FFE9A8" />
+      <path d="M60 50 q 24 -12 48 0 q 24 -12 48 0" fill="none" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" opacity="0.85" />
+      {/* gazebo frame around the view */}
+      <rect x="0" y="130" width="400" height="22" fill="#D9BF98" />
+      <rect x="14" y="0" width="16" height="132" fill="#C99C6B" />
+      <rect x="370" y="0" width="16" height="132" fill="#C99C6B" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <rect key={i} x={60 + i * 70} y="0" width="9" height="132" fill="#C99C6B" opacity="0.85" />
+      ))}
+      <Floor color="#A2D18D" y={152} />
+      <path d="M170 280 L200 152 L240 152 L270 280 Z" fill="#E8D9B5" opacity="0.85" />
+    </g>
+  ),
+  guesthouse: (
+    <g>
+      <Wall color="#F5E9D2" />
+      <Window x={250} y={52} w={66} h={86} />
+      <path d="M48 208 L48 104 Q 84 72 120 104 L120 208 Z" fill="#EFDCC0" stroke="#D9BF98" strokeWidth="4" />
+      <Wainscot y={178} />
+      <Floor color="#C99C6B" />
+      <Planks />
+    </g>
+  ),
+  stable: (
+    <g>
+      {/* barn interior */}
+      <rect x="0" y="0" width="400" height="232" fill="#E8D6B4" />
+      <rect x="0" y="0" width="400" height="100" fill="#D9BD8E" />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} x={i * 104} y="8" width="90" height="84" rx="4" fill="#C9A76B" opacity="0.55" />
+      ))}
+      <path d="M0 100 h400 v10 H0 Z" fill="#A9825A" />
+      {/* hay pile in the corner */}
+      <ellipse cx="350" cy="220" rx="46" ry="16" fill="#E3C25F" />
+      <ellipse cx="348" cy="210" rx="34" ry="12" fill="#EAD27A" />
+      <Floor color="#B59A72" />
+      <Planks color="#B59A72" />
+    </g>
+  ),
+  orchard: (
+    <g>
+      <defs>
+        <linearGradient id="or-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#A8D8EC" />
+          <stop offset="1" stopColor="#E2F4E2" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="400" height="150" fill="url(#or-sky)" />
+      <circle cx="66" cy="46" r="20" fill="#FFE9A8" />
+      <path d="M140 52 q 26 -14 52 0 q 26 -14 52 0" fill="none" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" opacity="0.85" />
+      {/* orchard rows */}
+      {[40, 170, 300].map((tx, i) => (
+        <g key={tx}>
+          <rect x={tx + 8} y={96 - i * 6} width="10" height={54 + i * 6} fill="#8C6238" />
+          <circle cx={tx + 13} cy={86 - i * 8} r={30 - i * 4} fill={i % 2 ? "#6BA84F" : "#5F9E57"} />
+          <circle cx={tx + 5} cy={94 - i * 8} r={16 - i * 2} fill="#7FB86A" />
+          <circle cx={tx + 22} cy={90 - i * 8} r="5" fill="#E2483C" />
+          <circle cx={tx + 8} cy={78 - i * 8} r="4" fill="#E2483C" />
+        </g>
+      ))}
+      <Floor color="#93C684" y={150} />
+    </g>
+  ),
 };
 
 export function RoomScene({ room, className }: { room: string; className?: string }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useGame } from "@/game/store";
 import { ROOM_BY_ID, variantPrice, slotPlaceKey } from "@/game/decor";
 import { sfx } from "@/game/audio";
@@ -27,6 +27,9 @@ export function RoomScreen() {
   const [lastSlot, setLastSlot] = useState<string | null>(null);
   /** placement guide panel (what goes where) — open by default */
   const [guideOpen, setGuideOpen] = useState(true);
+  /** live on-screen x (%) of every empty slot, projected from the 3D camera */
+  const [slotPos, setSlotPos] = useState<Record<string, number>>({});
+  const handleSlotPositions = useCallback((pos: Record<string, number>) => setSlotPos(pos), []);
 
   const room = activeRoom ? ROOM_BY_ID.get(activeRoom) : null;
 
@@ -51,8 +54,11 @@ export function RoomScreen() {
   // otherwise the first empty one — and the button sits exactly beneath it
   const targetSlot =
     emptySlots.find((s) => s.id === lastSlot) ?? emptySlots[0] ?? null;
+  /** exact on-screen x of a slot: live 3D projection, or the SVG fallback */
+  const slotXpct = (slot: { id: string; x: number }) =>
+    slotPos[slot.id] ?? Math.round((slot.x / 400) * 100);
   const targetXpct = targetSlot
-    ? Math.min(78, Math.max(22, (targetSlot.x / 400) * 100))
+    ? Math.min(82, Math.max(18, slotXpct(targetSlot)))
     : 50;
 
   const openSlot = (slotId: string) => {
@@ -84,6 +90,7 @@ export function RoomScreen() {
             roomId={room.id}
             decor={decor}
             onSlotTap={openSlot}
+            onSlotPositions={handleSlotPositions}
             className="block aspect-[4/3] w-full touch-none"
           />
         ) : (
@@ -140,13 +147,16 @@ export function RoomScreen() {
       </div>
 
       {/* per-slot chips — one under every empty spot: item name + where it
-          goes + price, so the player always knows WHAT belongs WHERE */}
+          goes + price, so the player always knows WHAT belongs WHERE.
+          Chips are sorted by their live projected x so they never collide. */}
       {emptySlots.length > 0 && (
         <div className="relative mx-auto mt-1.5 h-[8.5rem] w-full max-w-lg">
-          {emptySlots.map((slot, i) => {
+          {[...emptySlots]
+            .sort((a, b) => slotXpct(a) - slotXpct(b))
+            .map((slot, i) => {
             const min = variantPrice(slot.item, 0);
             const affordable = coins >= min;
-            const xpct = Math.min(88, Math.max(12, (slot.x / 400) * 100));
+            const xpct = Math.min(88, Math.max(12, slotXpct(slot)));
             const row = i % 3;
             return (
               <button
@@ -156,7 +166,7 @@ export function RoomScreen() {
                 aria-label={`${t("item_" + slot.item)} — ${t(slotPlaceKey(slot))} — ${t("coins")} ${n(min)}`}
                 onClick={() => openSlot(slot.id)}
                 className={cn(
-                  "absolute flex -translate-x-1/2 flex-col items-center rounded-2xl border px-2.5 py-1 shadow-sm transition-transform active:scale-90",
+                  "absolute flex -translate-x-1/2 flex-col items-center rounded-2xl border px-2.5 py-1 shadow-sm transition-all active:scale-90",
                   row === 0 ? "top-0" : row === 1 ? "top-11" : "top-[5.5rem]",
                   affordable
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
