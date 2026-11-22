@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useGame } from "@/game/store";
 import { setSoundEnabled } from "@/game/audio";
+import { initBazaar } from "@/lib/bazaar";
 import { AudioPrimer, InlineToast } from "@/components/game/UiBits";
 import { MainMenu } from "@/components/game/MainMenu";
 import { LevelSelect } from "@/components/game/LevelSelect";
@@ -91,6 +92,8 @@ export default function Page() {
   // first connect of the session: report progress, receive admin coin gifts
   useEffect(() => {
     if (mounted && language) {
+      // APK: pull unconsumed Café Bazaar purchases (restore lost coins)
+      initBazaar();
       const id = setTimeout(() => syncNow(true), 1500);
       return () => clearTimeout(id);
     }

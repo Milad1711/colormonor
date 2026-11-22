@@ -4,10 +4,14 @@
  * Color Manor — Admin panel (/admin)
  * Manage coins per device: look up a device, add coins, set coins,
  * broadcast to everyone, inspect players and grant history.
- * Guarded by the ADMIN_KEY (manor-admin-1404 by default).
+ * Guarded by the ADMIN_KEY environment variable on the server — set it
+ * in the Vercel dashboard (Settings → Environment Variables → ADMIN_KEY),
+ * then redeploy. The panel only checks the key against the live API;
+ * there is no client-side password.
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { getApiBase } from "@/game/api-base";
 
 type Lang = "fa" | "en";
 
@@ -15,10 +19,10 @@ const FA = {
   title: "پنل مدیریت عمارت رنگین",
   sub: "مدیریت سکهٔ بازیکن‌ها بر اساس شناسهٔ دستگاه",
   key_label: "کلید مدیریت",
-  key_hint: "کلید پیش‌فرض: manor-admin-1404",
   device_id: "شناسهٔ دستگاه",
   login: "ورود",
   wrong_key: "کلید اشتباه است",
+  net_err: "اتصال به سرور برقرار نشد؛ اینترنت را بررسی کنید و در تنظیمات بازی، لینک سرور (Vercel) را وارد کنید.",
   stats_players: "بازیکن",
   stats_grants: "هدیهٔ ثبت‌شده",
   stats_sum: "مجموع سکهٔ هدیه‌داده‌شده",
@@ -61,10 +65,10 @@ const EN = {
   title: "Color Manor — Admin Panel",
   sub: "Manage player coins by device id",
   key_label: "Admin key",
-  key_hint: "Default key: manor-admin-1404",
   device_id: "Device ID",
   login: "Enter",
   wrong_key: "Wrong key",
+  net_err: "Could not reach the server — check your connection and set the server (Vercel) URL in the game's settings.",
   stats_players: "Players",
   stats_grants: "Grants issued",
   stats_sum: "Coins gifted (sum)",
@@ -143,6 +147,9 @@ export default function AdminPage() {
     typeof window !== "undefined" ? !!sessionStorage.getItem("cm-admin-key") : false,
   );
   const [keyError, setKeyError] = useState(false);
+  const [netError, setNetError] = useState(false);
+  // device id currently flashing "کپی شد!" on its copy button
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [overview, setOverview] = useState<{
     totalPlayers: number;
@@ -164,8 +171,8 @@ export default function AdminPage() {
   const loadOverview = useCallback(async () => {
     try {
       const [pRes, gRes] = await Promise.all([
-        fetch("/api/admin/players", { headers: { "x-admin-key": key }, cache: "no-store" }),
-        fetch("/api/admin/grant", { headers: { "x-admin-key": key }, cache: "no-store" }),
+        fetch(getApiBase() + "/api/admin/players", { headers: { "x-admin-key": key }, cache: "no-store" }),
+        fetch(getApiBase() + "/api/admin/grant", { headers: { "x-admin-key": key }, cache: "no-store" }),
       ]);
       if (pRes.status === 401 || gRes.status === 401) {
         setAuthed(false);
@@ -182,13 +189,15 @@ export default function AdminPage() {
 
   const login = async () => {
     setKeyError(false);
+    setNetError(false);
     try {
-      const res = await fetch("/api/admin/auth", {
+      const res = await fetch(getApiBase() + "/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok === true) {
         sessionStorage.setItem("cm-admin-key", key);
         setAuthed(true);
         loadOverview();
@@ -196,7 +205,7 @@ export default function AdminPage() {
         setKeyError(true);
       }
     } catch {
-      setKeyError(true);
+      setNetError(true);
     }
   };
 
@@ -213,7 +222,7 @@ export default function AdminPage() {
     setLookupId(deviceId);
     setMsg(null);
     try {
-      const res = await fetch(`/api/admin/player?deviceId=${encodeURIComponent(deviceId)}`, {
+      const res = await fetch(`${getApiBase()}/api/admin/player?deviceId=${encodeURIComponent(deviceId)}`, {
         headers: { "x-admin-key": key },
         cache: "no-store",
       });
@@ -221,6 +230,36 @@ export default function AdminPage() {
       setLookup(data);
     } catch {
       setLookup(null);
+    }
+  };
+
+  // copy a device id to the clipboard — clipboard API first, textarea
+  // fallback for older WebViews — then flash "کپی شد!" on the button
+  const copyDeviceId = async (id: string) => {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(id);
+      ok = true;
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = id;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        ok = false;
+      }
+    }
+    if (ok) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1600);
+    } else {
+      // last resort: show the full id so it can be noted manually
+      setMsg({ kind: "err", text: id });
     }
   };
 
@@ -235,7 +274,7 @@ export default function AdminPage() {
       setMsg({ kind: "err", text: T.grant_err_same });
       return;
     }
-    const res = await fetch("/api/admin/grant", {
+    const res = await fetch(getApiBase() + "/api/admin/grant", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-key": key },
       body: JSON.stringify({ deviceId: lookupId.trim(), amount: amt, mode, reason }),
@@ -258,7 +297,7 @@ export default function AdminPage() {
       setMsg({ kind: "err", text: T.amount_positive });
       return;
     }
-    const res = await fetch("/api/admin/grant-all", {
+    const res = await fetch(getApiBase() + "/api/admin/grant-all", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-key": key },
       body: JSON.stringify({ amount: amt, reason: bcReason || "broadcast" }),
@@ -306,6 +345,7 @@ export default function AdminPage() {
             autoComplete="current-password"
           />
           {keyError && <p className="mt-2 text-xs font-black text-rose-600">{T.wrong_key}</p>}
+          {netError && <p className="mt-2 text-xs font-black leading-5 text-rose-600">{T.net_err}</p>}
           <button type="button" onClick={login} className={`${btnCls} mt-4 w-full`}>
             {T.login}
           </button>
@@ -319,7 +359,6 @@ export default function AdminPage() {
             </svg>
             {T.back_game}
           </a>
-          <p className="mt-3 text-center text-[10px] font-bold text-stone-400">{T.key_hint}</p>
           <div className="mt-3 flex justify-center gap-1 rounded-full bg-stone-100 p-1">
             {(["fa", "en"] as Lang[]).map((l) => (
               <button
@@ -438,11 +477,37 @@ export default function AdminPage() {
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-sm font-black text-stone-800">
-                      {lookup.player.name ?? "—"}{" "}
+                    <div className="flex items-center gap-1.5 text-sm font-black text-stone-800">
+                      {lookup.player.name ?? "—"}
                       <span dir="ltr" className="font-mono text-[10px] font-bold text-stone-400">
                         {lookup.player.deviceId}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const p = lookup.player;
+                          if (p) void copyDeviceId(p.deviceId);
+                        }}
+                        aria-label={T.copy}
+                        title={copiedId === lookup.player.deviceId ? T.copied : T.copy}
+                        className={
+                          "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors " +
+                          (copiedId === lookup.player.deviceId
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-white text-stone-400 hover:bg-amber-100 hover:text-amber-700")
+                        }
+                      >
+                        {copiedId === lookup.player.deviceId ? (
+                          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M4.5 12.5l5 5 10-11" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <rect x="9" y="9" width="11" height="11" rx="2" />
+                            <path d="M5 15V6a2 2 0 012-2h9" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
                     <div className="text-[11px] font-bold text-stone-500">
                       {T.last_seen}: {fmtTime(lookup.player.updatedAt)}
@@ -569,15 +634,40 @@ export default function AdminPage() {
                   {overview.players.map((p) => (
                     <tr key={p.deviceId} className="border-t border-stone-100 text-center font-bold text-stone-700">
                       <td className="p-1.5 text-start">
-                        <button
-                          type="button"
-                          onClick={() => doLookup(p.deviceId)}
-                          dir="ltr"
-                          className="rounded-lg bg-amber-50 px-2 py-1 font-mono text-[11px] text-amber-700 hover:bg-amber-100"
-                          title={T.copy}
-                        >
-                          {p.deviceId.length > 18 ? p.deviceId.slice(0, 15) + "…" : p.deviceId}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => doLookup(p.deviceId)}
+                            dir="ltr"
+                            className="rounded-lg bg-amber-50 px-2 py-1 font-mono text-[11px] text-amber-700 hover:bg-amber-100"
+                            title={T.search}
+                          >
+                            {p.deviceId.length > 18 ? p.deviceId.slice(0, 15) + "…" : p.deviceId}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyDeviceId(p.deviceId)}
+                            aria-label={T.copy}
+                            title={copiedId === p.deviceId ? T.copied : T.copy}
+                            className={
+                              "flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors " +
+                              (copiedId === p.deviceId
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-stone-100 text-stone-500 hover:bg-amber-100 hover:text-amber-700")
+                            }
+                          >
+                            {copiedId === p.deviceId ? (
+                              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                <path d="M4.5 12.5l5 5 10-11" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                <rect x="9" y="9" width="11" height="11" rx="2" />
+                                <path d="M5 15V6a2 2 0 012-2h9" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </td>
                       <td className="p-1.5 text-start">{p.name ?? "—"}</td>
                       <td className="p-1.5 tabular-nums">{p.coins}</td>
