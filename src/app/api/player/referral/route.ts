@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { clampInt, cleanDeviceId } from "@/lib/admin";
 import { ensureRefCode, REFERRAL_REWARD, REFERRAL_REASON_INVITE, REFERRAL_REASON_JOIN } from "@/lib/referral";
 
@@ -11,6 +11,7 @@ import { ensureRefCode, REFERRAL_REWARD, REFERRAL_REASON_INVITE, REFERRAL_REASON
  */
 export async function GET(req: Request) {
   try {
+    await dbReady;
     const url = new URL(req.url);
     const deviceId = cleanDeviceId(url.searchParams.get("deviceId"));
     if (!deviceId) {
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await dbReady;
     const body = await req.json().catch(() => null);
     const deviceId = cleanDeviceId(body?.deviceId);
     if (!deviceId) {

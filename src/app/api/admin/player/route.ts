@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { adminDenied, adminKeyOk, cleanDeviceId } from "@/lib/admin";
 
 /** Admin player lookup by device id — profile + grant history. */
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "deviceId required" }, { status: 400 });
   }
   try {
+    await dbReady;
     const player = await db.player.findUnique({ where: { deviceId } });
     const grants = await db.grant.findMany({
       where: { deviceId },

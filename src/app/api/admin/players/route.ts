@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { adminDenied, adminKeyOk } from "@/lib/admin";
 
 /** Admin overview — recent players + server totals. */
 export async function GET(req: Request) {
   if (!adminKeyOk(req)) return adminDenied();
   try {
+    await dbReady;
     const [players, totalPlayers, totalGrants, grantedSum] = await Promise.all([
       db.player.findMany({
         orderBy: { updatedAt: "desc" },

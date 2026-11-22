@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { cleanDeviceId } from "@/lib/admin";
 
 /**
@@ -9,6 +9,7 @@ import { cleanDeviceId } from "@/lib/admin";
  */
 export async function POST(req: Request) {
   try {
+    await dbReady;
     const body = await req.json().catch(() => null);
     const deviceId = cleanDeviceId(body?.deviceId);
     const ids: string[] = Array.isArray(body?.ids)

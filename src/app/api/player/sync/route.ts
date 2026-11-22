@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { clampInt, cleanDeviceId } from "@/lib/admin";
 import { ensureRefCode } from "@/lib/referral";
 
@@ -11,6 +11,7 @@ import { ensureRefCode } from "@/lib/referral";
  */
 export async function POST(req: Request) {
   try {
+    await dbReady;
     const body = await req.json().catch(() => null);
     const deviceId = cleanDeviceId(body?.deviceId);
     if (!deviceId) {

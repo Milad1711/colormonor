@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 
 /**
  * Public leaderboard — top 100 players by score.
@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
  */
 export async function GET() {
   try {
+    await dbReady;
     const players = await db.player.findMany({
       where: { score: { gt: 0 } },
       orderBy: [{ score: "desc" }, { stars: "desc" }, { updatedAt: "asc" }],

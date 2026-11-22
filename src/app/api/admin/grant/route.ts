@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbReady } from "@/lib/db";
 import { adminDenied, adminKeyOk, cleanDeviceId, clampInt } from "@/lib/admin";
 
 /**
@@ -13,6 +13,7 @@ import { adminDenied, adminKeyOk, cleanDeviceId, clampInt } from "@/lib/admin";
 export async function POST(req: Request) {
   if (!adminKeyOk(req)) return adminDenied();
   try {
+    await dbReady;
     const body = await req.json().catch(() => null);
     const deviceId = cleanDeviceId(body?.deviceId);
     const amount = clampInt(body?.amount, -1_000_000, 1_000_000, 0);
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   if (!adminKeyOk(req)) return adminDenied();
   try {
+    await dbReady;
     const grants = await db.grant.findMany({
       orderBy: { createdAt: "desc" },
       take: 40,
