@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.milad1711.colormanor"
+    android:versionCode="6"
+    android:versionName="1.1.4">
+
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Café Bazaar in-app billing (Poolakey-style) -->
+    <uses-permission android:name="com.farsitel.bazaar.permission.PAY_THROUGH_BAZAAR"/>
+
+    <!-- Package visibility on Android 11+: let the app see Café Bazaar
+         (phone + TV) and its billing service so bindService can resolve. -->
+    <queries>
+        <package android:name="com.farsitel.bazaar"/>
+        <package android:name="com.farsitel.bazaar.tv"/>
+        <intent>
+            <action android:name="ir.cafebazaar.pardakht.InAppBillingService.BIND"/>
+        </intent>
+    </queries>
+
+    <application
+        android:label="عمارت رنگین"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:hardwareAccelerated="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
